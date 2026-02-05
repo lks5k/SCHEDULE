@@ -32,3 +32,8 @@ export * from './modules/schedule/index.js';
 // MÓDULO DE REPORTES
 // ============================================
 export * from './modules/reports/index.js';
+
+// ============================================
+// SERVICIOS DE ASISTENCIA
+// ============================================
+export * from './services/attendance/index.js';
