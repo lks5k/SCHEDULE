@@ -1,5 +1,5 @@
 # 🚀 GUÍA COMPLETA DE CONFIGURACIÓN
-## Sistema de Control de Horarios con Supabase
+## Sistema de SCHEDULE con Supabase
 
 ---
 
@@ -75,7 +75,7 @@
 
 1. En el menú lateral izquierdo, busca el ícono de SQL Editor (⚡)
 2. Haz clic en "SQL Editor"
-3. Abre el archivo `supabase-setup.sql` que te proporcioné
+3. Abre el archivo `database.sql` del proyecto
 4. **Copia TODO el contenido** del archivo
 5. Pégalo en el editor de Supabase
 6. Haz clic en el botón "RUN" (esquina inferior derecha)
@@ -103,10 +103,10 @@
    - Haz clic en el ícono del ojo para revelar la key
    - Copia esta key completa (es muy larga, asegúrate de copiarla toda)
 
-### **Paso 6: Configurar el Archivo HTML**
+### **Paso 6: Configurar credenciales de Supabase**
 
-1. Abre el archivo `sistema-horarios-supabase.html`
-2. Busca la línea **799** (aprox.) que dice:
+1. Abre el archivo `script.js`
+2. Busca la sección **CONFIGURACIÓN SUPABASE** que dice:
    ```javascript
    const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
    const SUPABASE_ANON_KEY = 'TU_ANON_KEY_AQUI';
@@ -120,7 +120,7 @@
 
 ### **Paso 7: Probar la Conexión**
 
-1. Abre el archivo HTML en tu navegador (Brave)
+1. Abre `index.html` en tu navegador (o con Live Server)
 2. Abre la consola (F12 → Console)
 3. Deberías ver el mensaje: `✅ Supabase conectado`
 4. Si ves `⚠️ Usando almacenamiento local`, verifica que copiaste bien las credenciales
@@ -294,14 +294,16 @@ Belisario Corrales:   333333
 El sistema está completamente funcional con o sin Supabase.
 
 **Para comenzar:**
-1. Descarga el archivo `sistema-horarios-supabase.html`
+1. Descarga/abre el archivo `index.html`
 2. Si quieres usar Supabase, sigue los pasos de configuración
 3. Abre el archivo en Brave
 4. Ingresa con: `333333` (colaborador), `222222` (admin), o `111111` (maestro)
 
 **Archivos incluidos:**
-- `sistema-horarios-supabase.html` → Aplicación completa
-- `supabase-setup.sql` → Script para crear la base de datos
+- `index.html` → Interfaz de la aplicación
+- `script.js` → Lógica + conexión a Supabase + exportación Excel
+- `style.css` → Estilos
+- `database.sql` → Script para crear la base de datos en Supabase
 - `GUIA-CONFIGURACION.md` → Este archivo
 
 ---
@@ -321,4 +323,4 @@ El sistema está completamente funcional con o sin Supabase.
 
 ---
 
-**¡Disfruta tu sistema de control de horarios profesional!** 🚀
+**¡Disfruta tu sistema de SCHEDULE profesional!** 🚀

@@ -1,0 +1,17 @@
+/**
+ * PUNTO DE ENTRADA PRINCIPAL V3.0
+ * 
+ * Inicializa la aplicación React con StrictMode.
+ * SIN datos hardcoded - TODO desde Supabase.
+ */
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './styles/index.css';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
