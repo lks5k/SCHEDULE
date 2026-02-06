@@ -35,45 +35,48 @@ export const getEmployeePairs = async (employeeId) => {
       return { success: true, pairs: [] };
     }
 
-    const pairsByDate = {};
-    
+    const pairsList = [];
+    let currentPair = null;
+
     records.forEach(record => {
-      const fecha = record.fecha;
-      
-      if (!pairsByDate[fecha]) {
-        pairsByDate[fecha] = {
-          fecha: fecha,
+      if (record.tipo === RECORD_TYPES.ENTRADA) {
+        if (currentPair) {
+          pairsList.push(currentPair);
+        }
+        currentPair = {
+          fecha: record.fecha,
           dia: record.dia,
-          entrada: null,
+          entrada: {
+            id: record.id,
+            hora: record.hora,
+            timestamp: record.timestamp
+          },
           salida: null,
           observaciones: record.observaciones || '',
           tiempo_almuerzo: record.tiempo_almuerzo || '02:00',
           tiempo_almuerzo_editado: record.tiempo_almuerzo_editado || false,
           licencia_remunerada: record.licencia_remunerada || false
         };
-      }
-
-      if (record.tipo === RECORD_TYPES.ENTRADA) {
-        pairsByDate[fecha].entrada = {
+      } else if (record.tipo === RECORD_TYPES.SALIDA && currentPair) {
+        currentPair.salida = {
           id: record.id,
           hora: record.hora,
           timestamp: record.timestamp
         };
-      } else if (record.tipo === RECORD_TYPES.SALIDA) {
-        pairsByDate[fecha].salida = {
-          id: record.id,
-          hora: record.hora,
-          timestamp: record.timestamp
-        };
+        pairsList.push(currentPair);
+        currentPair = null;
       }
     });
 
-    let pairs = Object.values(pairsByDate)
-      .sort((a, b) => {
-        const dateA = a.fecha.split('/').reverse().join('');
-        const dateB = b.fecha.split('/').reverse().join('');
-        return dateB.localeCompare(dateA);
-      });
+    if (currentPair) {
+      pairsList.push(currentPair);
+    }
+
+    let pairs = pairsList.sort((a, b) => {
+      const tsA = a.entrada?.timestamp || '';
+      const tsB = b.entrada?.timestamp || '';
+      return tsB.localeCompare(tsA);
+    });
 
     pairs = pairs.map(pair => {
       if (pair.entrada && pair.salida) {
@@ -115,35 +118,31 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
   try {
     const parseTime = (timeStr) => {
       const parts = timeStr.split(':');
-      const hours = parseInt(parts[0], 10);
-      const minutes = parseInt(parts[1], 10);
-      return hours * 60 + minutes; // Retorna minutos totales
+      const hours = parseInt(parts[0], 10) || 0;
+      const minutes = parseInt(parts[1], 10) || 0;
+      return hours * 60 + minutes;
     };
 
-    const entradaMinutos = parseTime(horaEntrada);
-    const salidaMinutos = parseTime(horaSalida);
-    const almuerzoMinutos = parseTime(tiempoAlmuerzo);
+    const entradaMin = parseTime(horaEntrada);
+    const salidaMin = parseTime(horaSalida);
+    const almuerzoMin = parseTime(tiempoAlmuerzo);
     
-    let diffMinutos = salidaMinutos - entradaMinutos;
+    let diffMin = salidaMin - entradaMin;
     
-    if (diffMinutos < 0) {
-      diffMinutos += 24 * 60; // Agregar 24 horas
+    if (diffMin < 0) {
+      diffMin += 24 * 60;
     }
 
-    diffMinutos -= almuerzoMinutos;
+    diffMin -= almuerzoMin;
 
-    if (diffMinutos < 0) {
-      diffMinutos = 0;
+    if (diffMin < 0) {
+      diffMin = 0;
     }
 
-    const hours = Math.floor(diffMinutos / 60);
-    const minutes = diffMinutos % 60;
+    const hours = Math.floor(diffMin / 60);
+    const minutes = diffMin % 60;
 
-    const total_horas = 
-      String(hours).padStart(2, '0') + ':' +
-      String(minutes).padStart(2, '0');
-
-    // Fórmula decimal EXACTA del documento
+    const total_horas = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
     const total_horas_decimal = hours + (minutes / 60);
 
     return {
@@ -152,7 +151,6 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
     };
 
   } catch (error) {
-    console.error('Error calculando horas:', error);
     return {
       total_horas: '00:00',
       total_horas_decimal: 0.00
@@ -163,15 +161,16 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
 /**
  * Actualiza el tiempo de almuerzo (EDITABLE UNA SOLA VEZ)
  * 
- * @param {number} recordId - ID del registro ENTRADA
+ * @param {string} fecha - Fecha en formato DD/MM/YYYY
+ * @param {number} employeeId - ID del empleado
  * @param {string} nuevoTiempo - Formato "HH:MM"
  * @returns {Object} { success, error? }
  */
-export const updateTiempoAlmuerzo = async (recordId, nuevoTiempo) => {
+export const updateTiempoAlmuerzo = async (fecha, employeeId, nuevoTiempo) => {
   try {
     const timeRegex = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/;
     if (!timeRegex.test(nuevoTiempo)) {
-      return { success: false, error: 'Formato inválido. Use HH:MM' };
+      return { success: false, error: 'Formato invalido. Use HH:MM' };
     }
 
     const [hours, minutes] = nuevoTiempo.split(':').map(Number);
@@ -180,14 +179,17 @@ export const updateTiempoAlmuerzo = async (recordId, nuevoTiempo) => {
     if (totalMinutes < 0 || totalMinutes > 120) {
       return { 
         success: false, 
-        error: 'El tiempo debe estar entre 00:00 y 02:00' 
+        error: 'Tiempo debe estar entre 00:00 y 02:00' 
       };
     }
 
     const { data: record, error: fetchError } = await supabase
       .from('time_records')
-      .select('tiempo_almuerzo_editado, tipo')
-      .eq('id', recordId)
+      .select('id, tiempo_almuerzo_editado')
+      .eq('employee_id', employeeId)
+      .eq('fecha', fecha)
+      .eq('tipo', RECORD_TYPES.ENTRADA)
+      .is('deleted_at', null)
       .single();
 
     if (fetchError) {
@@ -197,14 +199,7 @@ export const updateTiempoAlmuerzo = async (recordId, nuevoTiempo) => {
     if (record.tiempo_almuerzo_editado) {
       return { 
         success: false, 
-        error: 'El tiempo de almuerzo ya fue editado anteriormente' 
-      };
-    }
-
-    if (record.tipo !== RECORD_TYPES.ENTRADA) {
-      return { 
-        success: false, 
-        error: 'Solo se puede editar en registros de ENTRADA' 
+        error: 'Tiempo de almuerzo ya fue editado' 
       };
     }
 
@@ -214,22 +209,21 @@ export const updateTiempoAlmuerzo = async (recordId, nuevoTiempo) => {
         tiempo_almuerzo: nuevoTiempo,
         tiempo_almuerzo_editado: true
       })
-      .eq('id', recordId);
+      .eq('id', record.id);
 
     if (updateError) {
       return { 
         success: false, 
-        error: 'Error al actualizar tiempo de almuerzo' 
+        error: 'Error al actualizar' 
       };
     }
 
     return { 
       success: true, 
-      message: 'Tiempo de almuerzo actualizado correctamente' 
+      message: 'Actualizado correctamente' 
     };
 
   } catch (error) {
-    console.error('Error en updateTiempoAlmuerzo:', error);
-    return { success: false, error: 'Error al procesar solicitud' };
+    return { success: false, error: 'Error procesando' };
   }
 };

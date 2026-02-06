@@ -75,7 +75,6 @@ export function AdminView() {
     }
   };
 
-  // Función para cargar todos los pares de todos los empleados
   const loadAllPairs = async () => {
     try {
       const { data: employees } = await supabase
@@ -90,25 +89,23 @@ export function AdminView() {
       for (const employee of employees) {
         const result = await getEmployeePairs(employee.id);
         if (result.success && result.pairs) {
-          // Agregar nombre del empleado a cada par
-          const pairsWithEmployee = result.pairs.map(pair => ({
+          const pairsWithName = result.pairs.map(pair => ({
             ...pair,
             employee_name: employee.name
           }));
-          allPairsData.push(...pairsWithEmployee);
+          allPairsData.push(...pairsWithName);
         }
       }
 
-      // Ordenar por fecha DESC
       allPairsData.sort((a, b) => {
-        const dateA = a.fecha.split('/').reverse().join('');
-        const dateB = b.fecha.split('/').reverse().join('');
-        return dateB.localeCompare(dateA);
+        const tsA = a.entrada?.timestamp || '';
+        const tsB = b.entrada?.timestamp || '';
+        return tsB.localeCompare(tsA);
       });
 
       setAllPairs(allPairsData);
     } catch (error) {
-      console.error('Error cargando todos los pares:', error);
+      console.error('Error cargando parejas:', error);
     }
   };
 

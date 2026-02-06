@@ -222,15 +222,11 @@ export const fechaISOToCO = (fechaISO) => {
  * @returns {Object} { fecha: "DD/MM/YYYY", dia: "lunes", hora: "HH:MM:SS" }
  */
 export const getCurrentDateTimeColombia = () => {
-  // Colombia está en UTC-5 (sin DST)
   const now = new Date();
-  
-  // Convertir a hora de Colombia (UTC-5)
   const colombiaTime = new Date(now.toLocaleString('en-US', { 
     timeZone: 'America/Bogota' 
   }));
 
-  // Extraer componentes
   const day = String(colombiaTime.getDate()).padStart(2, '0');
   const month = String(colombiaTime.getMonth() + 1).padStart(2, '0');
   const year = colombiaTime.getFullYear();
@@ -238,13 +234,12 @@ export const getCurrentDateTimeColombia = () => {
   const hours = String(colombiaTime.getHours()).padStart(2, '0');
   const minutes = String(colombiaTime.getMinutes()).padStart(2, '0');
 
-  // Obtener día de la semana en español
-  const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
   const dia = diasSemana[colombiaTime.getDay()];
 
   return {
     fecha: `${day}/${month}/${year}`,
     dia: dia,
-    hora: `${hours}:${minutes}` // SIN SEGUNDOS
+    hora: `${hours}:${minutes}`
   };
 };

@@ -152,14 +152,14 @@ export function EmployeeView() {
     setAlmuerzoValue(pair.tiempo_almuerzo);
   };
 
-  const handleSaveAlmuerzo = async (recordId) => {
+  const handleSaveAlmuerzo = async (fecha, employeeId) => {
     if (!almuerzoValue) return;
 
     try {
-      const result = await updateTiempoAlmuerzo(recordId, almuerzoValue);
+      const result = await updateTiempoAlmuerzo(fecha, employeeId, almuerzoValue);
 
       if (result.success) {
-        setToastMessage('Tiempo de almuerzo actualizado');
+        setToastMessage('Tiempo actualizado');
         setToastType('success');
         setShowToast(true);
         setEditingAlmuerzoId(null);
@@ -291,12 +291,15 @@ export function EmployeeView() {
                             onChange={(e) => setAlmuerzoValue(e.target.value)}
                             onKeyPress={(e) => {
                               if (e.key === 'Enter') {
-                                handleSaveAlmuerzo(pair.entrada.id);
+                                handleSaveAlmuerzo(pair.fecha, currentUser.id);
                               }
                             }}
                             onBlur={() => handleCancelEdit()}
-                            className="bg-slate-700 text-white px-2 py-1 rounded text-sm"
+                            className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-20"
+                            min="00:00"
                             max="02:00"
+                            step="60"
+                            disabled={pair.tiempo_almuerzo_editado}
                             autoFocus
                           />
                         ) : (
