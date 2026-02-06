@@ -23,6 +23,7 @@ INSERT INTO employees (name, cedula, password, role) VALUES
 ('Belisario Empleado', '30303030', 'Belisario2026', 'employee');
 
 -- 3. TABLA DE REGISTROS DE TIEMPO
+-- FASE 4: Columnas adicionales para parejas ENTRADA/SALIDA y cálculos automáticos
 CREATE TABLE time_records (
     id SERIAL PRIMARY KEY,
     employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
@@ -33,9 +34,18 @@ CREATE TABLE time_records (
     hora TEXT NOT NULL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     observaciones TEXT DEFAULT '',
+    tiempo_almuerzo TEXT DEFAULT '02:00',
+    tiempo_almuerzo_editado BOOLEAN DEFAULT FALSE,
+    total_horas TEXT,
+    total_horas_decimal NUMERIC(5,2),
+    licencia_remunerada BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     deleted_at TIMESTAMP WITH TIME ZONE
 );
+
+-- Índice para optimizar búsqueda de parejas por empleado y fecha
+CREATE INDEX idx_time_records_employee_fecha ON time_records(employee_id, fecha) WHERE deleted_at IS NULL;
+CREATE INDEX idx_time_records_timestamp ON time_records(timestamp DESC) WHERE deleted_at IS NULL;
 
 -- 4. LOG DE ACTIVIDAD (PARA AUDITORÍA)
 CREATE TABLE activity_log (

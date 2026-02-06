@@ -8,3 +8,8 @@ export {
   getAllRecordsRealtime,
   subscribeToRecords 
 } from './attendance.service';
+
+export { 
+  getEmployeePairs, 
+  updateTiempoAlmuerzo 
+} from './pairs.service';
