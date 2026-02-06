@@ -1,103 +1,85 @@
-# ERP EMPRESARIAL - Reglas del Proyecto
+Implementar Excelencia Tecnica bajo protocolo Rigor de Produccion.
 
-# PROTOCOLO DE RIGOR - SCHEDULE
+REFERENCIA PRINCIPAL
+Lee siempre @ARQUITECTURA_SCHEDULE_IA.md para cualquier cambio.
 
-[cite_start]Implementar la Excelencia Técnica bajo el protocolo de Rigor de Producción[cite: 2].
+REGLAS ORO
+Minimo necesario: Incluye SOLO lo que IA necesita para tarea especifica
+Limites: Archivos < 300 lineas. Si excede, refactoriza
+Formatos: HH:MM (24h) y DD/MM/YYYY obligatorio
 
-## REGLAS DE ORO
-- [cite_start]**Referencia Principal:** Lee siempre @ARQUITECTURA_SCHEDULE_IA.md para cualquier cambio.
-- **Mínimo Necesario:** Incluye SOLO lo que la IA necesita para la tarea específica.
-- **Límites:** Archivos < 300 líneas. Si se excede, refactoriza y extrae componentes.
-- **Formatos:** Uso obligatorio de HH:MM (24h) y DD/MM/YYYY.
+PROTOCOLO QUIRURGICO
+Si usuario indica linea exacta, MODIFICA SOLO esa linea
+Prohibido reescribir funciones completas para cambios estilo
+NO tocar logica negocio ni base datos en prompts UI
 
-## PROTOCOLO QUIRÚRGICO (Cambios Simples)
-- Si el usuario indica una línea exacta, MODIFICA SOLO esa línea.
-- Queda prohibido reescribir funciones completas para cambios de estilo (colores, íconos, textos).
-- **Restricción:** No tocar lógica de negocio ni base de datos en prompts de UI.
+PROTECCION CAMBIOS NO AUTORIZADOS
+NO modificar archivos no solicitados
+NO cambiar logica negocio sin autorizacion
+NO tocar base datos sin migration plan
 
-## PROTECCIÓN CONTRA CAMBIOS NO AUTORIZADOS
-- **RESTRICCIONES ABSOLUTAS:** - NO modificar archivos no solicitados.
-  - NO cambiar lógica de negocio sin autorización.
-  - NO tocar la base de datos sin generar un migration plan.
+CONTEXTO
+Sistema gestion empresarial donde perdida datos es INACEPTABLE
+Prioridad: Estabilidad, integridad datos, mantenibilidad
 
-## Contexto
-Sistema de gestión empresarial donde la pérdida de datos es INACEPTABLE.
-Prioridad: Estabilidad, integridad de datos y mantenibilidad.
+PRIORIDADES CRITICAS
+1. Integridad datos: Validacion exhaustiva + error handling TODA operacion
+2. NUNCA eliminar: Solo soft delete (isActive: false o deletedAt)
+3. Modularidad: Cada modulo independiente, error no afecta otros
 
-## PRIORIDADES CRÍTICAS
-
-1. **INTEGRIDAD DE DATOS**: Validación exhaustiva + error handling en TODA operación
-2. **NUNCA ELIMINAR**: Solo soft delete (`isActive: false` o `deletedAt`)
-3. **MODULARIDAD**: Cada módulo independiente, un error no afecta a otros
-
-## ARQUITECTURA
-
-### Estructura obligatoria:
+ARQUITECTURA OBLIGATORIA
 ```
 /modules/{nombre-modulo}/
-  /components      # UI React
-  /services        # Lógica + Supabase calls
-  /hooks           # Custom React hooks
-  /utils           # Helpers reutilizables
-  index.js         # Export principal
+  /components
+  /services
+  /hooks
+  /utils
+  index.js
 ```
 
-### Separación estricta:
-- **Components**: SOLO presentación y UI
-- **Services**: TODA lógica de negocio y llamadas Supabase
-- **Hooks**: Estado y efectos React
-- **Utils**: Funciones puras
+SEPARACION ESTRICTA
+Components: SOLO presentacion UI
+Services: TODA logica negocio + llamadas Supabase
+Hooks: Estado efectos React
+Utils: Funciones puras
 
+STACK
+Frontend: React 18+
+Backend: Node.js + Express
+Base datos: Supabase PostgreSQL
+Auth: Supabase Auth
+Estado: Context API
+Estilos: Tailwind CSS
+Lenguaje: JavaScript ES6+
 
-## STACK
+CONVENCIONES ARCHIVOS
+Componentes: PascalCase.jsx
+Services: camelCase.service.js
+Utils: camelCase.util.js
+Hooks: useCamelCase.js
+Carpetas: kebab-case
 
-- **Frontend**: React 18+
-- **Backend**: Node.js + Express
-- **Base de datos**: Supabase (PostgreSQL)
-- **Auth**: Supabase Auth
-- **Estado**: Context API
-- **Estilos**: Tailwind CSS
-- **Lenguaje**: JavaScript ES6+
+FUNCIONES
+Verbos descriptivos: getUserData(), saveSchedule()
+Booleans: isActive, hasPermission, shouldUpdate
+Handlers: handleSubmit, handleDelete
 
-## CONVENCIONES
+VARIABLES
+Constantes globales: MAX_RETRY_ATTEMPTS
+Variables normales: userData, scheduleList
 
-### Archivos:
-- Componentes: `PascalCase.jsx` → `ScheduleForm.jsx`
-- Services: `camelCase.service.js` → `schedule.service.js`
-- Utils: `camelCase.util.js` → `formatDate.util.js`
-- Hooks: `useCamelCase.js` → `useSchedule.js`
-- Carpetas: `kebab-case` → `/user-management`
+COMENTARIOS
+Solo para logica compleja o decisiones tecnicas no obvias
+Preferir codigo auto-explicativo
 
-### Funciones:
-- Verbos descriptivos: `getUserData()`, `saveSchedule()`
-- Booleans: `isActive`, `hasPermission`, `shouldUpdate`
-- Handlers: `handleSubmit`, `handleDelete`
+TAILWIND CSS
+Usar clases utilitarias directas, NO inline styles
+NO mezclar Tailwind con CSS custom cuando Tailwind lo tiene
+Extraer clases repetidas en componentes reutilizables
+Orden: Layout, Espaciado, Tamano, Colores, Bordes, Efectos, Responsive
+Mobile-first: className="w-full md:w-1/2 lg:w-1/3"
 
-### Variables:
-- Constantes globales: `MAX_RETRY_ATTEMPTS`
-- Variables normales: `userData`, `scheduleList`
-
-### Comentarios:
-Solo para lógica compleja o decisiones técnicas no obvias. Preferir código auto-explicativo.
-
-## TAILWIND CSS
-
-### Uso correcto:
-- Usar clases utilitarias directas, NO inline styles
-- NO mezclar Tailwind con CSS custom cuando Tailwind ya lo tiene
-- Extraer clases repetidas en componentes reutilizables
-
-### Orden de clases:
-Layout → Espaciado → Tamaño → Colores → Bordes → Efectos → Responsive
-
-### Mobile-first:
-```javascript
-className="w-full md:w-1/2 lg:w-1/3"  // Mobile → Tablet → Desktop
-```
-
-## SUPABASE
-
-### Patrón OBLIGATORIO para todas las operaciones:
+SUPABASE PATRON OBLIGATORIO
 ```javascript
 async function operationName() {
   try {
@@ -114,14 +96,13 @@ async function operationName() {
 }
 ```
 
-### CRUD obligatorio:
-- **CREATE**: Validar ANTES de insertar, añadir `createdAt` e `isActive: true`
-- **UPDATE**: Añadir `updatedAt` timestamp
-- **DELETE**: SOLO soft delete con `isActive: false` + `deletedAt`
+CRUD OBLIGATORIO
+CREATE: Validar ANTES insertar, anadir createdAt e isActive: true
+UPDATE: Anadir updatedAt timestamp
+DELETE: SOLO soft delete con isActive: false + deletedAt
 
-### Configuración:
+CONFIGURACION SUPABASE
 ```javascript
-// src/config/supabase.js
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
@@ -134,20 +115,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 ```
 
-**NUNCA hardcodear credenciales** - usar variables de entorno
+NUNCA hardcodear credenciales, usar variables entorno
 
-## JAVASCRIPT ES6+
+JAVASCRIPT ES6+
+const/let (nunca var)
+Arrow functions
+Destructuring cuando mejore claridad
+Spread operator
+Template literals
+Optional chaining: user?.profile?.name
+Nullish coalescing: value ?? defaultValue
 
-### Usar características modernas:
-- `const/let` (nunca `var`)
-- Arrow functions
-- Destructuring cuando mejore claridad
-- Spread operator
-- Template literals
-- Optional chaining: `user?.profile?.name`
-- Nullish coalescing: `value ?? defaultValue`
-
-### Async/Await SIEMPRE con try-catch:
+ASYNC/AWAIT SIEMPRE CON TRY-CATCH
 ```javascript
 async function operation() {
   try {
@@ -160,75 +139,56 @@ async function operation() {
 }
 ```
 
-### Early returns (reducir anidamiento):
+EARLY RETURNS
 ```javascript
 if (!user) return { error: 'User required' };
 if (!user.email) return { error: 'Email required' };
 return { valid: true };
 ```
 
-## PROHIBIDO
+PROHIBIDO
+1. Codigo monolitico: Max 300 lineas archivo
+2. Operaciones sin try-catch
+3. Hardcodear credenciales
+4. Mezclar logica UI
+5. Eliminar datos: Solo soft delete
+6. Mutar estado
+7. CSS inline con Tailwind
+8. Consultas sin validar
 
-1. **Código monolítico**: Máximo 300 líneas por archivo
-2. **Operaciones sin try-catch**: Toda llamada async DEBE tener error handling
-3. **Hardcodear credenciales**: Usar variables de entorno
-4. **Mezclar lógica y UI**: Separación estricta
-5. **Eliminar datos**: Solo soft delete
-6. **Mutar estado**: Usar setState o métodos inmutables
-7. **CSS inline con Tailwind**: Si usas Tailwind, NO uses `style={{}}`
-8. **Consultas sin validar**: Validar ANTES de enviar a Supabase
-
-## VALIDACIÓN OBLIGATORIA
-
-Antes de CUALQUIER operación de escritura:
+VALIDACION OBLIGATORIA
 ```javascript
 function validateData(data) {
   const errors = [];
-  
-  // 1. Campos requeridos
   if (!data.required) errors.push('Required field missing');
-  
-  // 2. Tipos correctos
   if (typeof data.number !== 'number') errors.push('Invalid type');
-  
-  // 3. Rangos válidos
   if (data.value < 0) errors.push('Must be positive');
-  
-  // 4. Formatos (email, fecha, etc.)
   if (!isValidFormat(data.field)) errors.push('Invalid format');
-  
   return { valid: errors.length === 0, errors };
 }
 ```
 
----
+GUIA RAPIDA
+Logica negocio: Service, NO Component
+Llamadas Supabase: Service, NO Component
+Estado local UI: useState, NO Service
+Estado global: Context API, NO Props drilling
+Transformar datos: Utils, NO Inline
+Estilos: Tailwind, NO Inline styles
+Validar: Service, NO Alerts directos
 
-## 🔧 GUÍA RÁPIDA
+PRINCIPIOS
+KISS: Simplicidad sobre complejidad
+DRY: Codigo duplicado 2+ veces a funcion reutilizable
+SRP: Una funcion = una responsabilidad
+Fail-safe: Asumir todo puede fallar
+Mobile-first: Disenar primero para movil
 
-| Necesitas | Usar | NO usar |
-|-----------|------|---------|
-| Lógica de negocio | Service | Component |
-| Llamadas Supabase | Service | Component |
-| Estado local UI | useState | Service |
-| Estado global | Context API | Props drilling |
-| Transformar datos | Utils | Inline |
-| Estilos | Tailwind | Inline styles |
-| Validar | Service | Alerts directos |
+AL GENERAR CODIGO
+1. Pregunta si algo no claro sobre arquitectura
+2. Explica decisiones tecnicas importantes
+3. Indica configuraciones necesarias
+4. Incluye validaciones error handling por defecto
+5. Responde siempre en espanol
 
-## PRINCIPIOS
-
-1. **KISS**: Simplicidad sobre complejidad
-2. **DRY**: Código duplicado 2+ veces → función reutilizable
-3. **SRP**: Una función = una responsabilidad
-4. **Fail-safe**: Asumir que todo puede fallar
-5. **Mobile-first**: Diseñar primero para móvil
-
-## AL GENERAR CÓDIGO
-
-1. Pregunta si algo no está claro sobre arquitectura
-2. Explica decisiones técnicas importantes
-3. Indica configuraciones necesarias (env vars, Supabase tables)
-4. Incluye validaciones y error handling por defecto
-5. **Responde siempre en español**
-
-**Nunca asumas. Siempre pregunta.**
+Nunca asumas. Siempre pregunta.
