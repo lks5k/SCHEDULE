@@ -237,7 +237,6 @@ export const getCurrentDateTimeColombia = () => {
   
   const hours = String(colombiaTime.getHours()).padStart(2, '0');
   const minutes = String(colombiaTime.getMinutes()).padStart(2, '0');
-  const seconds = String(colombiaTime.getSeconds()).padStart(2, '0');
 
   // Obtener día de la semana en español
   const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -246,6 +245,6 @@ export const getCurrentDateTimeColombia = () => {
   return {
     fecha: `${day}/${month}/${year}`,
     dia: dia,
-    hora: `${hours}:${minutes}:${seconds}`
+    hora: `${hours}:${minutes}` // SIN SEGUNDOS
   };
 };

@@ -104,52 +104,47 @@ export const getEmployeePairs = async (employeeId) => {
 };
 
 /**
- * Calcula el total decimal sumando las horas, los minutos divididos por 60 y los segundos divididos por 3600. Ejemplo: 08:30:00 debe dar 8.50
+ * Calcula el total de horas trabajadas con formato HH:MM
  * 
- * @param {string} horaEntrada - Formato "HH:MM:SS"
- * @param {string} horaSalida - Formato "HH:MM:SS"
+ * @param {string} horaEntrada - Formato "HH:MM" o "HH:MM:SS"
+ * @param {string} horaSalida - Formato "HH:MM" o "HH:MM:SS"
  * @param {string} tiempoAlmuerzo - Formato "HH:MM"
  * @returns {Object} { total_horas, total_horas_decimal }
  */
 const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:00') => {
   try {
     const parseTime = (timeStr) => {
-      const [hours, minutes, seconds = '00'] = timeStr.split(':');
-      const date = new Date();
-      date.setHours(parseInt(hours, 10));
-      date.setMinutes(parseInt(minutes, 10));
-      date.setSeconds(parseInt(seconds, 10));
-      return date;
+      const parts = timeStr.split(':');
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      return hours * 60 + minutes; // Retorna minutos totales
     };
 
-    const entrada = parseTime(horaEntrada);
-    const salida = parseTime(horaSalida);
+    const entradaMinutos = parseTime(horaEntrada);
+    const salidaMinutos = parseTime(horaSalida);
+    const almuerzoMinutos = parseTime(tiempoAlmuerzo);
     
-    let diffMs = salida - entrada;
+    let diffMinutos = salidaMinutos - entradaMinutos;
     
-    if (diffMs < 0) {
-      diffMs += 24 * 60 * 60 * 1000;
+    if (diffMinutos < 0) {
+      diffMinutos += 24 * 60; // Agregar 24 horas
     }
 
-    const [almuerzoHoras, almuerzoMinutos] = tiempoAlmuerzo.split(':');
-    const almuerzoMs = (parseInt(almuerzoHoras, 10) * 60 + parseInt(almuerzoMinutos, 10)) * 60 * 1000;
-    
-    diffMs -= almuerzoMs;
+    diffMinutos -= almuerzoMinutos;
 
-    if (diffMs < 0) {
-      diffMs = 0;
+    if (diffMinutos < 0) {
+      diffMinutos = 0;
     }
 
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+    const hours = Math.floor(diffMinutos / 60);
+    const minutes = diffMinutos % 60;
 
     const total_horas = 
       String(hours).padStart(2, '0') + ':' +
-      String(minutes).padStart(2, '0') + ':' +
-      String(seconds).padStart(2, '0');
+      String(minutes).padStart(2, '0');
 
-    const total_horas_decimal = hours + (minutes / 60) + (seconds / 3600);
+    // Fórmula decimal EXACTA del documento
+    const total_horas_decimal = hours + (minutes / 60);
 
     return {
       total_horas,
@@ -159,7 +154,7 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
   } catch (error) {
     console.error('Error calculando horas:', error);
     return {
-      total_horas: '00:00:00',
+      total_horas: '00:00',
       total_horas_decimal: 0.00
     };
   }

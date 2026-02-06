@@ -28,26 +28,40 @@ export function EmployeeView() {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('info');
 
-  const [logoutCountdown, setLogoutCountdown] = useState(null);
-
   useEffect(() => {
     loadInitialState();
   }, [currentUser]);
 
+  // Sistema de detección de inactividad
   useEffect(() => {
-    if (logoutCountdown === null) return;
+    let inactivityTimer;
 
-    if (logoutCountdown === 0) {
-      handleLogout();
-      return;
-    }
+    const resetTimer = () => {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        // Logout automático después de 10 segundos de inactividad
+        handleLogout();
+      }, 10000); // 10 segundos
+    };
 
-    const timer = setTimeout(() => {
-      setLogoutCountdown(logoutCountdown - 1);
-    }, 1000);
+    // Detectar actividad del usuario
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    
+    events.forEach(event => {
+      document.addEventListener(event, resetTimer, true);
+    });
 
-    return () => clearTimeout(timer);
-  }, [logoutCountdown]);
+    // Iniciar timer
+    resetTimer();
+
+    // Cleanup
+    return () => {
+      clearTimeout(inactivityTimer);
+      events.forEach(event => {
+        document.removeEventListener(event, resetTimer, true);
+      });
+    };
+  }, [handleLogout]);
 
   const loadInitialState = async () => {
     if (!currentUser?.id) return;
@@ -98,8 +112,6 @@ export function EmployeeView() {
         setNextAction(result.nextAction);
         
         await loadPairs();
-
-        setLogoutCountdown(10);
 
       } else {
         setToastMessage(result.error || 'Error al registrar marcación');
@@ -170,7 +182,6 @@ export function EmployeeView() {
   };
 
   const onLogout = async () => {
-    setLogoutCountdown(null);
     await handleLogout();
   };
 
@@ -206,7 +217,7 @@ export function EmployeeView() {
             </p>
           </div>
           <Button onClick={onLogout} variant="danger" className="text-sm md:text-base">
-            {logoutCountdown !== null ? `Cerrando en ${logoutCountdown}s` : 'Cerrar Sesión'}
+            Cerrar Sesión
           </Button>
         </div>
 
@@ -220,17 +231,11 @@ export function EmployeeView() {
               onClick={handleMarkAttendance}
               variant={nextAction === RECORD_TYPES.ENTRADA ? 'success' : 'danger'}
               loading={processing}
-              disabled={processing || !nextAction || logoutCountdown !== null}
+              disabled={processing || !nextAction}
               className="w-full text-lg py-4"
             >
               {nextAction === RECORD_TYPES.ENTRADA ? '🟢 Marcar ENTRADA' : '🔴 Marcar SALIDA'}
             </Button>
-
-            {logoutCountdown !== null && (
-              <p className="text-yellow-400 text-sm mt-4 font-semibold">
-                ⏱️ Cerrando sesión automáticamente en {logoutCountdown} segundos...
-              </p>
-            )}
           </div>
         </div>
 
@@ -280,27 +285,20 @@ export function EmployeeView() {
                       </td>
                       <td className="px-4 py-3 text-slate-300 font-mono text-sm">
                         {editingAlmuerzoId === pair.entrada?.id ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="time"
-                              value={almuerzoValue}
-                              onChange={(e) => setAlmuerzoValue(e.target.value)}
-                              className="bg-slate-700 text-white px-2 py-1 rounded text-sm"
-                              max="02:00"
-                            />
-                            <button
-                              onClick={() => handleSaveAlmuerzo(pair.entrada.id)}
-                              className="text-green-400 hover:text-green-300 text-xs"
-                            >
-                              ✓
-                            </button>
-                            <button
-                              onClick={handleCancelEdit}
-                              className="text-red-400 hover:text-red-300 text-xs"
-                            >
-                              ✕
-                            </button>
-                          </div>
+                          <input
+                            type="time"
+                            value={almuerzoValue}
+                            onChange={(e) => setAlmuerzoValue(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSaveAlmuerzo(pair.entrada.id);
+                              }
+                            }}
+                            onBlur={() => handleCancelEdit()}
+                            className="bg-slate-700 text-white px-2 py-1 rounded text-sm"
+                            max="02:00"
+                            autoFocus
+                          />
                         ) : (
                           <span
                             onClick={() => handleEditAlmuerzo(pair)}
