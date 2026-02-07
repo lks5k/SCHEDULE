@@ -259,7 +259,7 @@ export function AdminView() {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Empleado</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Fecha</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Día</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Dia</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Hora Entrada</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Hora Salida</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">T. Almuerzo</th>
@@ -273,48 +273,53 @@ export function AdminView() {
                   {allPairs.length === 0 ? (
                     <tr>
                       <td colSpan="10" className="px-4 py-8 text-center text-slate-400">
-                        No hay registros para mostrar
+                        No hay registros
                       </td>
                     </tr>
                   ) : (
-                    allPairs.map((pair, index) => (
-                      <tr key={index} className="hover:bg-slate-700/50 transition-colors">
-                        <td className="px-4 py-3 text-white font-medium text-sm">
-                          {pair.employee_name}
-                        </td>
-                        <td className="px-4 py-3 text-white font-mono text-sm">
-                          {pair.fecha}
-                        </td>
-                        <td className="px-4 py-3 text-slate-300 capitalize text-sm">
-                          {pair.dia}
-                        </td>
-                        <td className="px-4 py-3 text-green-400 font-mono font-semibold text-sm">
-                          {pair.entrada ? pair.entrada.hora : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-red-400 font-mono font-semibold text-sm">
-                          {pair.salida ? pair.salida.hora : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-slate-300 font-mono text-sm">
-                          {pair.tiempo_almuerzo}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {pair.licencia_remunerada ? (
-                            <span className="text-blue-400">✓</span>
-                          ) : (
-                            <span className="text-slate-600">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-white font-mono font-semibold text-sm">
-                          {pair.total_horas || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-blue-400 font-mono font-semibold text-sm">
-                          {pair.total_horas_decimal ? pair.total_horas_decimal.toFixed(2) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 text-sm max-w-xs truncate">
-                          {pair.observaciones || '—'}
-                        </td>
-                      </tr>
-                    ))
+                    allPairs.map((pair, index) => {
+                      const fechaParts = pair.fecha.split('/');
+                      const fechaISO = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
+                      
+                      return (
+                        <tr key={index} className="hover:bg-slate-700/50 transition-colors">
+                          <td className="px-4 py-3 text-white font-medium text-sm">
+                            {pair.employee_name}
+                          </td>
+                          <td className="px-4 py-3 text-white font-mono text-sm">
+                            {fechaISO}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300 capitalize text-sm">
+                            {pair.dia}
+                          </td>
+                          <td className="px-4 py-3 text-green-400 font-mono font-semibold text-sm">
+                            {pair.entrada?.hora || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-red-400 font-mono font-semibold text-sm">
+                            {pair.salida?.hora || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300 font-mono text-sm">
+                            {pair.tiempo_almuerzo}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {pair.licencia_remunerada ? (
+                              <span className="text-blue-400">Si</span>
+                            ) : (
+                              <span className="text-slate-600">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-white font-mono font-semibold text-sm">
+                            {pair.total_horas || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-blue-400 font-mono font-semibold text-sm">
+                            {pair.total_horas_decimal ? pair.total_horas_decimal.toFixed(2) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 text-sm max-w-xs truncate">
+                            {pair.observaciones || '—'}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

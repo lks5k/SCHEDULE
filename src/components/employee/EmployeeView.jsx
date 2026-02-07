@@ -133,33 +133,14 @@ export function EmployeeView() {
     }
   };
 
-  const handleEditAlmuerzo = (pair) => {
-    if (pair.tiempo_almuerzo_editado) {
-      setToastMessage('El tiempo de almuerzo ya fue editado');
-      setToastType('warning');
-      setShowToast(true);
-      return;
-    }
-
-    if (!pair.entrada) {
-      setToastMessage('No hay registro de entrada para editar');
-      setToastType('warning');
-      setShowToast(true);
-      return;
-    }
-
-    setEditingAlmuerzoId(pair.entrada.id);
-    setAlmuerzoValue(pair.tiempo_almuerzo);
-  };
-
-  const handleSaveAlmuerzo = async (fecha, employeeId) => {
+  const handleSaveAlmuerzo = async (entradaId) => {
     if (!almuerzoValue) return;
 
     try {
-      const result = await updateTiempoAlmuerzo(fecha, employeeId, almuerzoValue);
+      const result = await updateTiempoAlmuerzo(entradaId, almuerzoValue);
 
       if (result.success) {
-        setToastMessage('Tiempo actualizado');
+        setToastMessage('Actualizado');
         setToastType('success');
         setShowToast(true);
         setEditingAlmuerzoId(null);
@@ -170,15 +151,10 @@ export function EmployeeView() {
         setShowToast(true);
       }
     } catch (error) {
-      setToastMessage('Error al actualizar');
+      setToastMessage('Error');
       setToastType('error');
       setShowToast(true);
     }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingAlmuerzoId(null);
-    setAlmuerzoValue('');
   };
 
   const onLogout = async () => {
@@ -251,7 +227,7 @@ export function EmployeeView() {
               <thead className="bg-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Fecha</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Día</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Dia</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Hora Entrada</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Hora Salida</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">T. Almuerzo</th>
@@ -265,70 +241,79 @@ export function EmployeeView() {
                 {pairs.length === 0 ? (
                   <tr>
                     <td colSpan="9" className="px-4 py-8 text-center text-slate-400">
-                      No hay registros para mostrar
+                      No hay registros
                     </td>
                   </tr>
                 ) : (
-                  pairs.map((pair, index) => (
-                    <tr key={index} className="hover:bg-slate-700/50 transition-colors">
-                      <td className="px-4 py-3 text-white font-mono text-sm">
-                        {pair.fecha}
-                      </td>
-                      <td className="px-4 py-3 text-slate-300 capitalize text-sm">
-                        {pair.dia}
-                      </td>
-                      <td className="px-4 py-3 text-green-400 font-mono font-semibold text-sm">
-                        {pair.entrada ? pair.entrada.hora : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-red-400 font-mono font-semibold text-sm">
-                        {pair.salida ? pair.salida.hora : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-300 font-mono text-sm">
-                        {editingAlmuerzoId === pair.entrada?.id ? (
-                          <input
-                            type="time"
-                            value={almuerzoValue}
-                            onChange={(e) => setAlmuerzoValue(e.target.value)}
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') {
-                                handleSaveAlmuerzo(pair.fecha, currentUser.id);
-                              }
-                            }}
-                            onBlur={() => handleCancelEdit()}
-                            className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-20"
-                            min="00:00"
-                            max="02:00"
-                            step="60"
-                            disabled={pair.tiempo_almuerzo_editado}
-                            autoFocus
-                          />
-                        ) : (
-                          <span
-                            onClick={() => handleEditAlmuerzo(pair)}
-                            className={pair.tiempo_almuerzo_editado ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-blue-400'}
-                          >
-                            {pair.tiempo_almuerzo}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {pair.licencia_remunerada ? (
-                          <span className="text-blue-400">✓</span>
-                        ) : (
-                          <span className="text-slate-600">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-white font-mono font-semibold text-sm">
-                        {pair.total_horas || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-blue-400 font-mono font-semibold text-sm">
-                        {pair.total_horas_decimal ? pair.total_horas_decimal.toFixed(2) : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-400 text-sm max-w-xs truncate">
-                        {pair.observaciones || '—'}
-                      </td>
-                    </tr>
-                  ))
+                  pairs.map((pair, index) => {
+                    const fechaParts = pair.fecha.split('/');
+                    const fechaISO = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
+                    
+                    return (
+                      <tr key={index} className="hover:bg-slate-700/50 transition-colors">
+                        <td className="px-4 py-3 text-white font-mono text-sm">
+                          {fechaISO}
+                        </td>
+                        <td className="px-4 py-3 text-slate-300 capitalize text-sm">
+                          {pair.dia}
+                        </td>
+                        <td className="px-4 py-3 text-green-400 font-mono font-semibold text-sm">
+                          {pair.entrada?.hora || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-red-400 font-mono font-semibold text-sm">
+                          {pair.salida?.hora || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-300 font-mono text-sm">
+                          {editingAlmuerzoId === pair.entrada?.id ? (
+                            <input
+                              type="time"
+                              value={almuerzoValue}
+                              onChange={(e) => setAlmuerzoValue(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveAlmuerzo(pair.entrada.id);
+                                }
+                              }}
+                              onBlur={() => setEditingAlmuerzoId(null)}
+                              className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-20"
+                              min="00:00"
+                              max="02:00"
+                              step="60"
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              onClick={() => {
+                                if (!pair.tiempo_almuerzo_editado && pair.entrada) {
+                                  setEditingAlmuerzoId(pair.entrada.id);
+                                  setAlmuerzoValue(pair.tiempo_almuerzo);
+                                }
+                              }}
+                              className={pair.tiempo_almuerzo_editado ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-blue-400'}
+                            >
+                              {pair.tiempo_almuerzo}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {pair.licencia_remunerada ? (
+                            <span className="text-blue-400">Si</span>
+                          ) : (
+                            <span className="text-slate-600">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-white font-mono font-semibold text-sm">
+                          {pair.total_horas || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-blue-400 font-mono font-semibold text-sm">
+                          {pair.total_horas_decimal ? pair.total_horas_decimal.toFixed(2) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-sm max-w-xs truncate">
+                          {pair.observaciones || '—'}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

@@ -1,22 +1,6 @@
-/**
- * SERVICIO DE PAREJAS ENTRADA/SALIDA
- * 
- * Implementa requisitos del documento "Estructura y normas de SCHEDULE":
- * - Parejas ENTRADA/SALIDA en misma fila
- * - Últimos 10 registros ordenados DESC
- * - Tiempo de almuerzo editable una sola vez
- * - Cálculo automático de horas con fórmula Excel
- */
+import { supabase } from '@/config/supabase.config';
+import { RECORD_TYPES } from '@/utils/constants.util';
 
-import { supabase } from '@/config/supabase.config.js';
-import { RECORD_TYPES } from '@/utils/constants.util.js';
-
-/**
- * Obtiene los últimos 10 PARES de registros ENTRADA/SALIDA de un empleado
- * 
- * @param {number} employeeId - ID del empleado
- * @returns {Object} { success, pairs?, error? }
- */
 export const getEmployeePairs = async (employeeId) => {
   try {
     const { data: records, error } = await supabase
@@ -24,96 +8,78 @@ export const getEmployeePairs = async (employeeId) => {
       .select('*')
       .eq('employee_id', employeeId)
       .is('deleted_at', null)
-      .order('timestamp', { ascending: false });
+      .order('timestamp', { ascending: true });
 
-    if (error) {
-      console.error('Error obteniendo registros:', error);
-      return { success: false, error: 'Error al obtener registros' };
-    }
-
+    if (error) throw error;
     if (!records || records.length === 0) {
       return { success: true, pairs: [] };
     }
 
-    const pairsList = [];
-    let currentPair = null;
+    const pairs = [];
+    let i = 0;
 
-    records.forEach(record => {
-      if (record.tipo === RECORD_TYPES.ENTRADA) {
-        if (currentPair) {
-          pairsList.push(currentPair);
+    while (i < records.length) {
+      const current = records[i];
+
+      if (current.tipo === RECORD_TYPES.ENTRADA) {
+        let nextSalida = null;
+        
+        for (let j = i + 1; j < records.length; j++) {
+          if (records[j].tipo === RECORD_TYPES.SALIDA) {
+            nextSalida = records[j];
+            i = j;
+            break;
+          }
         }
-        currentPair = {
-          fecha: record.fecha,
-          dia: record.dia,
-          entrada: {
-            id: record.id,
-            hora: record.hora,
-            timestamp: record.timestamp
-          },
-          salida: null,
-          observaciones: record.observaciones || '',
-          tiempo_almuerzo: record.tiempo_almuerzo || '02:00',
-          tiempo_almuerzo_editado: record.tiempo_almuerzo_editado || false,
-          licencia_remunerada: record.licencia_remunerada || false
-        };
-      } else if (record.tipo === RECORD_TYPES.SALIDA && currentPair) {
-        currentPair.salida = {
-          id: record.id,
-          hora: record.hora,
-          timestamp: record.timestamp
-        };
-        pairsList.push(currentPair);
-        currentPair = null;
-      }
-    });
 
-    if (currentPair) {
-      pairsList.push(currentPair);
+        const pair = {
+          fecha: current.fecha,
+          dia: current.dia,
+          entrada: {
+            id: current.id,
+            hora: current.hora,
+            timestamp: current.timestamp
+          },
+          salida: nextSalida ? {
+            id: nextSalida.id,
+            hora: nextSalida.hora,
+            timestamp: nextSalida.timestamp
+          } : null,
+          observaciones: current.observaciones || '',
+          tiempo_almuerzo: current.tiempo_almuerzo || '02:00',
+          tiempo_almuerzo_editado: current.tiempo_almuerzo_editado || false,
+          licencia_remunerada: current.licencia_remunerada || false
+        };
+
+        if (pair.salida) {
+          const calc = calcularHorasTrabajadas(
+            pair.entrada.hora,
+            pair.salida.hora,
+            pair.tiempo_almuerzo
+          );
+          pair.total_horas = calc.total_horas;
+          pair.total_horas_decimal = calc.total_horas_decimal;
+        } else {
+          pair.total_horas = null;
+          pair.total_horas_decimal = null;
+        }
+
+        pairs.push(pair);
+      }
+
+      i++;
     }
 
-    let pairs = pairsList.sort((a, b) => {
-      const tsA = a.entrada?.timestamp || '';
-      const tsB = b.entrada?.timestamp || '';
-      return tsB.localeCompare(tsA);
-    });
+    pairs.reverse();
+    const limitedPairs = pairs.slice(0, 10);
 
-    pairs = pairs.map(pair => {
-      if (pair.entrada && pair.salida) {
-        const calculos = calcularHorasTrabajadas(
-          pair.entrada.hora,
-          pair.salida.hora,
-          pair.tiempo_almuerzo
-        );
-        
-        return {
-          ...pair,
-          total_horas: calculos.total_horas,
-          total_horas_decimal: calculos.total_horas_decimal
-        };
-      }
-      
-      return pair;
-    });
-
-    pairs = pairs.slice(0, 10);
-
-    return { success: true, pairs };
+    return { success: true, pairs: limitedPairs };
 
   } catch (error) {
-    console.error('Error en getEmployeePairs:', error);
-    return { success: false, error: 'Error al procesar pares' };
+    return { success: false, error: 'Error procesando parejas', pairs: [] };
   }
 };
 
-/**
- * Calcula el total de horas trabajadas con formato HH:MM
- * 
- * @param {string} horaEntrada - Formato "HH:MM" o "HH:MM:SS"
- * @param {string} horaSalida - Formato "HH:MM" o "HH:MM:SS"
- * @param {string} tiempoAlmuerzo - Formato "HH:MM"
- * @returns {Object} { total_horas, total_horas_decimal }
- */
 const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:00') => {
   try {
     const parseTime = (timeStr) => {
@@ -158,48 +124,41 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
   }
 };
 
-/**
- * Actualiza el tiempo de almuerzo (EDITABLE UNA SOLA VEZ)
- * 
- * @param {string} fecha - Fecha en formato DD/MM/YYYY
- * @param {number} employeeId - ID del empleado
- * @param {string} nuevoTiempo - Formato "HH:MM"
- * @returns {Object} { success, error? }
- */
-export const updateTiempoAlmuerzo = async (fecha, employeeId, nuevoTiempo) => {
+export const updateTiempoAlmuerzo = async (entradaId, nuevoTiempo) => {
   try {
     const timeRegex = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/;
     if (!timeRegex.test(nuevoTiempo)) {
-      return { success: false, error: 'Formato invalido. Use HH:MM' };
+      return { success: false, error: 'Formato invalido' };
     }
 
     const [hours, minutes] = nuevoTiempo.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes;
     
-    if (totalMinutes < 0 || totalMinutes > 120) {
+    if (totalMinutes > 120) {
       return { 
         success: false, 
-        error: 'Tiempo debe estar entre 00:00 y 02:00' 
+        error: 'Maximo 02:00' 
       };
     }
 
     const { data: record, error: fetchError } = await supabase
       .from('time_records')
-      .select('id, tiempo_almuerzo_editado')
-      .eq('employee_id', employeeId)
-      .eq('fecha', fecha)
-      .eq('tipo', RECORD_TYPES.ENTRADA)
-      .is('deleted_at', null)
+      .select('tiempo_almuerzo_editado, tipo')
+      .eq('id', entradaId)
       .single();
 
     if (fetchError) {
       return { success: false, error: 'Registro no encontrado' };
     }
 
+    if (record.tipo !== RECORD_TYPES.ENTRADA) {
+      return { success: false, error: 'Solo editable en ENTRADA' };
+    }
+
     if (record.tiempo_almuerzo_editado) {
       return { 
         success: false, 
-        error: 'Tiempo de almuerzo ya fue editado' 
+        error: 'Ya fue editado' 
       };
     }
 
@@ -209,21 +168,16 @@ export const updateTiempoAlmuerzo = async (fecha, employeeId, nuevoTiempo) => {
         tiempo_almuerzo: nuevoTiempo,
         tiempo_almuerzo_editado: true
       })
-      .eq('id', record.id);
+      .eq('id', entradaId);
 
-    if (updateError) {
-      return { 
-        success: false, 
-        error: 'Error al actualizar' 
-      };
-    }
+    if (updateError) throw updateError;
 
     return { 
       success: true, 
-      message: 'Actualizado correctamente' 
+      message: 'Actualizado' 
     };
 
   } catch (error) {
-    return { success: false, error: 'Error procesando' };
+    return { success: false, error: 'Error actualizando' };
   }
 };
