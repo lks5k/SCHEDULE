@@ -277,8 +277,8 @@ export function AdminView() {
                       </td>
                     </tr>
                   ) : (
-                    allPairs.map((pair, index) => (
-                      <tr key={index} className="hover:bg-slate-700/50 transition-colors">
+                    allPairs.map((pair) => (
+                      <tr key={pair.entrada?.id || `salida-${pair.salida?.id}-${pair.employee_name}`} className="hover:bg-slate-700/50 transition-colors">
                         <td className="px-4 py-3 text-white font-medium text-sm">
                           {pair.employee_name}
                         </td>
@@ -299,7 +299,7 @@ export function AdminView() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           {pair.licencia_remunerada ? (
-                            <span className="text-blue-400">✓</span>
+                            <span className="text-blue-400">Si</span>
                           ) : (
                             <span className="text-slate-600">—</span>
                           )}
@@ -363,7 +363,6 @@ export function AdminView() {
                               ? 'bg-green-600/20 text-green-400'
                               : 'bg-red-600/20 text-red-400'
                           }`}>
-                            {record.tipo === RECORD_TYPES.ENTRADA ? '🟢' : '🔴'}
                             {record.tipo}
                           </span>
                         </td>

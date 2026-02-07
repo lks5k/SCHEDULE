@@ -171,14 +171,14 @@ export const getCurrentDateCO = () => {
 };
 
 /**
- * Obtiene la hora actual en formato HH:MM:SS
+ * Obtiene la hora actual en formato HH:MM (sin segundos)
  * @returns {string}
  */
 export const getCurrentTimeCO = () => {
   return new Date().toLocaleTimeString('es-CO', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    hour12: false
   });
 };
 
@@ -219,7 +219,7 @@ export const fechaISOToCO = (fechaISO) => {
 /**
  * Obtiene fecha y hora actual de Colombia con formato específico
  * 
- * @returns {Object} { fecha: "DD/MM/YYYY", dia: "lunes", hora: "HH:MM:SS" }
+ * @returns {Object} { fecha: "DD/MM/YYYY", dia: "lunes", hora: "HH:MM" }
  */
 export const getCurrentDateTimeColombia = () => {
   const now = new Date();

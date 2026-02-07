@@ -73,7 +73,7 @@ export const recordAttendance = async (employee, tipo) => {
       fecha: dateTime.fecha,      // "DD/MM/YYYY"
       dia: dateTime.dia,          // "lunes", "martes", etc.
       tipo: tipo,                 // "ENTRADA" o "SALIDA"
-      hora: dateTime.hora         // "HH:MM:SS"
+      hora: dateTime.hora         // "HH:MM" (sin segundos)
       // timestamp se auto-genera en Supabase (UTC)
       // observaciones default ''
     };

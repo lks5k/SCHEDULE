@@ -152,11 +152,11 @@ export function EmployeeView() {
     setAlmuerzoValue(pair.tiempo_almuerzo);
   };
 
-  const handleSaveAlmuerzo = async (fecha, employeeId) => {
-    if (!almuerzoValue) return;
+  const handleSaveAlmuerzo = async (entradaId) => {
+    if (!almuerzoValue || !entradaId) return;
 
     try {
-      const result = await updateTiempoAlmuerzo(fecha, employeeId, almuerzoValue);
+      const result = await updateTiempoAlmuerzo(entradaId, almuerzoValue);
 
       if (result.success) {
         setToastMessage('Tiempo actualizado');
@@ -269,8 +269,8 @@ export function EmployeeView() {
                     </td>
                   </tr>
                 ) : (
-                  pairs.map((pair, index) => (
-                    <tr key={index} className="hover:bg-slate-700/50 transition-colors">
+                  pairs.map((pair) => (
+                    <tr key={pair.entrada?.id || `salida-${pair.salida?.id}`} className="hover:bg-slate-700/50 transition-colors">
                       <td className="px-4 py-3 text-white font-mono text-sm">
                         {pair.fecha}
                       </td>
@@ -291,7 +291,7 @@ export function EmployeeView() {
                             onChange={(e) => setAlmuerzoValue(e.target.value)}
                             onKeyPress={(e) => {
                               if (e.key === 'Enter') {
-                                handleSaveAlmuerzo(pair.fecha, currentUser.id);
+                                handleSaveAlmuerzo(pair.entrada.id);
                               }
                             }}
                             onBlur={() => handleCancelEdit()}
@@ -313,7 +313,7 @@ export function EmployeeView() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {pair.licencia_remunerada ? (
-                          <span className="text-blue-400">✓</span>
+                          <span className="text-blue-400">Si</span>
                         ) : (
                           <span className="text-slate-600">—</span>
                         )}
