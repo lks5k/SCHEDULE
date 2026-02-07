@@ -3,6 +3,13 @@ Implementar Excelencia Tecnica bajo protocolo Rigor de Produccion.
 REFERENCIA PRINCIPAL
 Lee siempre @ARQUITECTURA_SCHEDULE_IA.md para cualquier cambio.
 
+REGLA_LOGICA_ASISTENCIA:
+- El ordenamiento SIEMPRE es por 'timestamp' ASC.
+- Una pareja es valida SOLO si ENTRADA < SALIDA.
+- Si hay dos ENTRADAS seguidas, la primera queda con SALIDA vacia.
+- El formato de fecha en tablas SIEMPRE es YYYY/MM/DD.
+- Los calculos de tiempo SIEMPRE se hacen en minutos totales (base 10) antes de convertir a HH:MM.
+
 REGLAS ORO
 Minimo necesario: Incluye SOLO lo que IA necesita para tarea especifica
 Limites: Archivos < 300 lineas. Si excede, refactoriza
