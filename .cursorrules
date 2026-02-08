@@ -1,7 +1,17 @@
 Implementar Excelencia Tecnica bajo protocolo Rigor de Produccion.
 
-REFERENCIA PRINCIPAL
-Lee siempre @ARQUITECTURA_SCHEDULE_IA.md para cualquier cambio.
+DOCUMENTACION OBLIGATORIA:
+
+Antes de CUALQUIER cambio:
+Lee @docs/MODELO_DATOS_MAESTRO.md
+Lee @docs/DIAGRAMA_FLUJO_SISTEMA.md
+Lee @docs/ARQUITECTURA_SCHEDULE_IA.md
+
+Identifica reglas afectadas
+Lista dependencias
+Verifica no romper otras reglas
+
+Toda nueva documentación, guías técnicas o especificaciones deben crearse obligatoriamente dentro de la carpeta /docs
 
 REGLAS ORO
 Minimo necesario: Incluye SOLO lo que IA necesita para tarea especifica
