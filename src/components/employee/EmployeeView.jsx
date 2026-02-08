@@ -295,16 +295,20 @@ export function EmployeeView() {
                               }
                             }}
                             onBlur={() => handleCancelEdit()}
-                            className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-20"
+                            className={`px-2 py-1 rounded text-sm w-20 ${
+                              pair.tiempo_almuerzo_editado 
+                                ? 'bg-slate-600 text-slate-400 cursor-not-allowed' 
+                                : 'bg-slate-700 text-white'
+                            }`}
                             min="00:00"
                             max="02:00"
                             step="60"
-                            disabled={pair.tiempo_almuerzo_editado}
+                            readOnly={pair.tiempo_almuerzo_editado}
                             autoFocus
                           />
                         ) : (
                           <span
-                            onClick={() => handleEditAlmuerzo(pair)}
+                            onClick={() => !pair.tiempo_almuerzo_editado && handleEditAlmuerzo(pair)}
                             className={pair.tiempo_almuerzo_editado ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-blue-400'}
                           >
                             {pair.tiempo_almuerzo}

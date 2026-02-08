@@ -72,17 +72,18 @@ export const getEmployeePairs = async (employeeId) => {
             timestamp: nextSalida.timestamp
           } : null,
           observaciones: current.observaciones || '',
-          tiempo_almuerzo: current.tiempo_almuerzo || '02:00',
+          tiempo_almuerzo_minutos: current.tiempo_almuerzo || 120, // BD almacena en minutos (int4)
+          tiempo_almuerzo: convertirMinutosAHHMM(current.tiempo_almuerzo || 120), // Solo para UI
           tiempo_almuerzo_editado: current.tiempo_almuerzo_editado || false,
           licencia_remunerada: current.licencia_remunerada || false
         };
 
-        // 4. Cálculo de horas
+        // 4. Cálculo de horas (FÓRMULA DECIMAL: minutos_totales / 60)
         if (pair.salida) {
           const calculos = calcularHorasTrabajadas(
             pair.entrada.hora,
             pair.salida.hora,
-            pair.tiempo_almuerzo
+            pair.tiempo_almuerzo_minutos // Pasar minutos directamente
           );
           pair.total_horas = calculos.total_horas;
           pair.total_horas_decimal = calculos.total_horas_decimal;
@@ -110,7 +111,8 @@ export const getEmployeePairs = async (employeeId) => {
             timestamp: current.timestamp
           },
           observaciones: current.observaciones || '',
-          tiempo_almuerzo: '02:00',
+          tiempo_almuerzo_minutos: 120, // BD almacena en minutos (int4)
+          tiempo_almuerzo: '02:00', // Solo para UI
           tiempo_almuerzo_editado: false,
           licencia_remunerada: false,
           total_horas: '00:00',
@@ -180,14 +182,32 @@ const formatearHoraSinSegundos = (hora) => {
 };
 
 /**
- * Calcula el total de horas trabajadas con formato HH:MM (sin segundos)
+ * Convierte minutos (int4 de BD) a formato HH:MM para UI
+ * CAPA DE PRESENTACIÓN: Conversión solo para renderizado
+ * 
+ * @param {number} minutos - Minutos totales (int4)
+ * @returns {string} Formato "HH:MM"
+ */
+const convertirMinutosAHHMM = (minutos) => {
+  try {
+    const hours = Math.floor(minutos / 60);
+    const mins = minutos % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  } catch (error) {
+    return '00:00';
+  }
+};
+
+/**
+ * PROTOCOLO QUIRÚRGICO: FÓRMULA DECIMAL (MODELO_DATOS_MAESTRO.md)
+ * Calcula el total de horas trabajadas aplicando: minutos_totales / 60
  * 
  * @param {string} horaEntrada - Formato "HH:MM"
  * @param {string} horaSalida - Formato "HH:MM"
- * @param {string} tiempoAlmuerzo - Formato "HH:MM"
+ * @param {number} tiempoAlmuerzoMinutos - Minutos de almuerzo (int4 de BD)
  * @returns {Object} { total_horas, total_horas_decimal }
  */
-const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:00') => {
+const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzoMinutos = 120) => {
   try {
     const parseTime = (timeStr) => {
       const parts = timeStr.split(':');
@@ -198,7 +218,6 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
 
     const entradaMin = parseTime(horaEntrada);
     const salidaMin = parseTime(horaSalida);
-    const almuerzoMin = parseTime(tiempoAlmuerzo);
     
     // Cálculo: (minutosSALIDA - minutosENTRADA) - minutosALMUERZO
     let diffMin = salidaMin - entradaMin;
@@ -208,8 +227,8 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
       diffMin += 24 * 60;
     }
 
-    // Restar tiempo de almuerzo
-    diffMin -= almuerzoMin;
+    // Restar tiempo de almuerzo (ya viene en minutos desde BD)
+    diffMin -= tiempoAlmuerzoMinutos;
 
     // No permitir valores negativos
     if (diffMin < 0) {
@@ -219,10 +238,10 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
     const hours = Math.floor(diffMin / 60);
     const minutes = diffMin % 60;
 
-    // Formato HH:MM (sin segundos)
+    // Formato HH:MM (sin segundos) - SOLO PARA UI
     const total_horas = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
     
-    // TotalDecimal = TotalMinutos / 60 (2 decimales)
+    // FÓRMULA DECIMAL: minutos_totales / 60 (MODELO_DATOS_MAESTRO.md)
     const total_horas_decimal = diffMin / 60;
 
     return {
@@ -240,9 +259,10 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
 
 /**
  * Actualiza el tiempo de almuerzo (EDITABLE UNA SOLA VEZ)
+ * MODELO_DATOS_MAESTRO.md: almuerzo: int4 (almacenado siempre en minutos)
  * 
  * @param {number} entradaId - ID del registro tipo ENTRADA
- * @param {string} nuevoTiempo - Formato "HH:MM"
+ * @param {string} nuevoTiempo - Formato "HH:MM" (desde UI)
  * @returns {Object} { success, error? }
  */
 export const updateTiempoAlmuerzo = async (entradaId, nuevoTiempo) => {
@@ -253,10 +273,11 @@ export const updateTiempoAlmuerzo = async (entradaId, nuevoTiempo) => {
       return { success: false, error: 'Formato invalido. Use HH:MM' };
     }
 
-    // Validar rango: máximo 2 horas (120 minutos)
+    // Convertir HH:MM a minutos (int4 para BD)
     const [hours, minutes] = nuevoTiempo.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes;
     
+    // Validar rango: máximo 2 horas (120 minutos)
     if (totalMinutes > 120) {
       return { 
         success: false, 
@@ -293,10 +314,11 @@ export const updateTiempoAlmuerzo = async (entradaId, nuevoTiempo) => {
     }
 
     // Actualizar usando el ID del registro ENTRADA
+    // CRÍTICO: Guardar en minutos (int4) según MODELO_DATOS_MAESTRO.md
     const { error: updateError } = await supabase
       .from('time_records')
       .update({
-        tiempo_almuerzo: nuevoTiempo,
+        tiempo_almuerzo: totalMinutes, // Almacenar como int4 (minutos)
         tiempo_almuerzo_editado: true
       })
       .eq('id', entradaId);
