@@ -194,3 +194,5 @@ AL GENERAR CODIGO
 5. Responde siempre en espanol
 
 Nunca asumas. Siempre pregunta.
+
+STRICT_BRANCH_POLICY: Solo operar en la rama actual. Prohibido ejecutar merge o checkout hacia 'main', 'gemini', 'desarrollo' o cualquier otra rama.
