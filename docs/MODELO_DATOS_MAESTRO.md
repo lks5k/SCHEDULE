@@ -6,7 +6,6 @@ Este documento define COMO funcionan los datos
 Toda IA debe leerlo ANTES de generar codigo
 Previene bugs al cambiar una cosa y romper otra
 
-
 ═══════════════════════════════════════════════════════════════════════
 ENTIDADES Y RELACIONES
 ═══════════════════════════════════════════════════════════════════════
@@ -126,6 +125,17 @@ REGLA 7: FORMATO HORA
   Siempre: HH:MM (24 horas)
   NUNCA: HH:MM:SS
   NUNCA: formato 12h (AM/PM)
+
+REGLA 8: PROTOCOLO DE INTEGRIDAD UI/UX 
+  Toda restricción de datos debe aplicarse en dos capas simultáneas: 
+    1. Capa Funcional (Seguridad):
+      1. Uso de atributos HTML nativos: readOnly, disabled, o required.
+      2. Validación en el Servicio (JS) antes de enviar a Supabase. 
+    2. Capa Visual (Feedback):
+      1. Estados: Cambiar opacidad (opacity-50) y cursor (cursor-not-allowed).
+      2. Feedback: Mostrar un mensaje o tooltip si el usuario intenta interactuar con un campo    bloqueado. 
+      
+    Regla de Oro: Un cambio visual sin readOnly es solo cosmético; un readOnly sin cambio visual es un error de usabilidad.
 
 ═══════════════════════════════════════════════════════════════════════
 FLUJO DE DATOS CRITICO
