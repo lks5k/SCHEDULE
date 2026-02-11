@@ -6,6 +6,7 @@ Este documento define COMO funcionan los datos
 Toda IA debe leerlo ANTES de generar codigo
 Previene bugs al cambiar una cosa y romper otra
 
+
 ═══════════════════════════════════════════════════════════════════════
 ENTIDADES Y RELACIONES
 ═══════════════════════════════════════════════════════════════════════
