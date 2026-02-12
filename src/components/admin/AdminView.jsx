@@ -9,9 +9,10 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button, Toast } from '@/components/common';
 import { getAllRecordsRealtime, subscribeToRecords } from '@/services/attendance/attendance.service';
-import { getEmployeePairs } from '@/services/attendance/pairs.service';
+import { getEmployeePairs, updateTiempoAlmuerzo } from '@/services/attendance/pairs.service';
 import { supabase } from '@/config/supabase.config';
 import { RECORD_TYPES } from '@/utils/constants.util';
+import { formatTimeInput, validateTimeInput, validateAlmuerzoRange } from '@/utils/timeInput.util';
 
 export function AdminView() {
   const { currentUser, handleLogout } = useAuth();
@@ -22,6 +23,9 @@ export function AdminView() {
   const [filter, setFilter] = useState('all'); // 'all', 'today', 'ENTRADA', 'SALIDA'
   const [viewMode, setViewMode] = useState('table'); // 'table' o 'realtime'
   const [allPairs, setAllPairs] = useState([]);
+  
+  const [editingAlmuerzoId, setEditingAlmuerzoId] = useState(null);
+  const [almuerzoValue, setAlmuerzoValue] = useState('');
   
   // Toast
   const [showToast, setShowToast] = useState(false);
@@ -109,8 +113,28 @@ export function AdminView() {
     }
   };
 
-  const onLogout = async () => {
-    await handleLogout();
+  const handleSaveAlmuerzo = async (entradaId) => {
+    if (!almuerzoValue) return;
+
+    try {
+      const result = await updateTiempoAlmuerzo(entradaId, almuerzoValue);
+
+      if (result.success) {
+        setToastMessage('Actualizado');
+        setToastType('success');
+        setShowToast(true);
+        setEditingAlmuerzoId(null);
+        await loadAllPairs();
+      } else {
+        setToastMessage(result.error);
+        setToastType('error');
+        setShowToast(true);
+      }
+    } catch (error) {
+      setToastMessage('Error');
+      setToastType('error');
+      setShowToast(true);
+    }
   };
 
   // Filtrar registros
@@ -156,7 +180,7 @@ export function AdminView() {
               Rol: <span className="capitalize">{currentUser?.role}</span>
             </p>
           </div>
-          <Button onClick={onLogout} variant="danger" className="text-sm md:text-base">
+          <Button onClick={handleLogout} variant="danger" className="text-sm md:text-base">
             Cerrar Sesión
           </Button>
         </div>
@@ -299,7 +323,50 @@ export function AdminView() {
                             {pair.salida?.hora || '—'}
                           </td>
                           <td className="px-4 py-3 text-slate-300 font-mono text-sm">
-                            {pair.tiempo_almuerzo}
+                            {editingAlmuerzoId === pair.entrada?.id ? (
+                              <input
+                                type="text"
+                                value={almuerzoValue}
+                                onChange={(e) => {
+                                  const formatted = formatTimeInput(e.target.value);
+                                  if (formatted.length <= 5) {
+                                    setAlmuerzoValue(formatted);
+                                  }
+                                }}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    if (validateTimeInput(almuerzoValue) && validateAlmuerzoRange(almuerzoValue)) {
+                                      handleSaveAlmuerzo(pair.entrada.id);
+                                    } else {
+                                      setToastMessage('Formato invalido o fuera de rango 00:00-02:00');
+                                      setToastType('error');
+                                      setShowToast(true);
+                                    }
+                                  }
+                                }}
+                                onBlur={() => setEditingAlmuerzoId(null)}
+                                placeholder="HH:MM"
+                                maxLength="5"
+                                className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-20 font-mono"
+                                autoFocus
+                              />
+                            ) : (
+                              <span
+                                onClick={() => {
+                                  if (!pair.tiempo_almuerzo_editado && pair.entrada) {
+                                    setEditingAlmuerzoId(pair.entrada.id);
+                                    setAlmuerzoValue(pair.tiempo_almuerzo);
+                                  }
+                                }}
+                                className={`font-mono ${
+                                  pair.tiempo_almuerzo_editado 
+                                    ? 'cursor-not-allowed opacity-50' 
+                                    : 'cursor-pointer hover:text-blue-400'
+                                }`}
+                              >
+                                {pair.tiempo_almuerzo}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             {pair.licencia_remunerada ? (

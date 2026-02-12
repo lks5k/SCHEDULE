@@ -12,6 +12,7 @@ import { checkLastRecord } from '@/modules/auth/services/auth.service';
 import { recordAttendance } from '@/services/attendance/attendance.service';
 import { getEmployeePairs, updateTiempoAlmuerzo } from '@/services/attendance/pairs.service';
 import { RECORD_TYPES } from '@/utils/constants.util';
+import { formatTimeInput, validateTimeInput, validateAlmuerzoRange } from '@/utils/timeInput.util';
 
 export function EmployeeView() {
   const { currentUser, handleLogout } = useAuth();
@@ -157,9 +158,6 @@ export function EmployeeView() {
     }
   };
 
-  const onLogout = async () => {
-    await handleLogout();
-  };
 
   if (loading) {
     return (
@@ -192,7 +190,7 @@ export function EmployeeView() {
               Colaborador • Cédula: {currentUser?.cedula}
             </p>
           </div>
-          <Button onClick={onLogout} variant="danger" className="text-sm md:text-base">
+          <Button onClick={handleLogout} variant="danger" className="text-sm md:text-base">
             Cerrar Sesión
           </Button>
         </div>
@@ -266,19 +264,29 @@ export function EmployeeView() {
                         <td className="px-4 py-3 text-slate-300 font-mono text-sm">
                           {editingAlmuerzoId === pair.entrada?.id ? (
                             <input
-                              type="time"
+                              type="text"
                               value={almuerzoValue}
-                              onChange={(e) => setAlmuerzoValue(e.target.value)}
+                              onChange={(e) => {
+                                const formatted = formatTimeInput(e.target.value);
+                                if (formatted.length <= 5) {
+                                  setAlmuerzoValue(formatted);
+                                }
+                              }}
                               onKeyPress={(e) => {
                                 if (e.key === 'Enter') {
-                                  handleSaveAlmuerzo(pair.entrada.id);
+                                  if (validateTimeInput(almuerzoValue) && validateAlmuerzoRange(almuerzoValue)) {
+                                    handleSaveAlmuerzo(pair.entrada.id);
+                                  } else {
+                                    setToastMessage('Formato invalido o fuera de rango 00:00-02:00');
+                                    setToastType('error');
+                                    setShowToast(true);
+                                  }
                                 }
                               }}
                               onBlur={() => setEditingAlmuerzoId(null)}
-                              className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-20"
-                              min="00:00"
-                              max="02:00"
-                              step="60"
+                              placeholder="HH:MM"
+                              maxLength="5"
+                              className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-20 font-mono"
                               autoFocus
                             />
                           ) : (
@@ -289,7 +297,11 @@ export function EmployeeView() {
                                   setAlmuerzoValue(pair.tiempo_almuerzo);
                                 }
                               }}
-                              className={pair.tiempo_almuerzo_editado ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-blue-400'}
+                              className={`font-mono ${
+                                pair.tiempo_almuerzo_editado 
+                                  ? 'cursor-not-allowed opacity-50' 
+                                  : 'cursor-pointer hover:text-blue-400'
+                              }`}
                             >
                               {pair.tiempo_almuerzo}
                             </span>

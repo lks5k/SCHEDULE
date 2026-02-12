@@ -99,6 +99,14 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
       diffMin += 24 * 60;
     }
 
+    if (diffMin < almuerzoMin) {
+      return {
+        total_horas: '00:00',
+        total_horas_decimal: 0.00,
+        invalido: true
+      };
+    }
+
     diffMin -= almuerzoMin;
 
     if (diffMin < 0) {
@@ -113,13 +121,15 @@ const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:0
 
     return {
       total_horas,
-      total_horas_decimal: parseFloat(total_horas_decimal.toFixed(2))
+      total_horas_decimal: parseFloat(total_horas_decimal.toFixed(2)),
+      invalido: false
     };
 
   } catch (error) {
     return {
       total_horas: '00:00',
-      total_horas_decimal: 0.00
+      total_horas_decimal: 0.00,
+      invalido: true
     };
   }
 };
