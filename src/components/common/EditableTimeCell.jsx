@@ -29,6 +29,9 @@ export function EditableTimeCell({
             setValue(formatted);
           }
         }}
+        onFocus={(e) => {
+          e.target.select();
+        }}
         onKeyPress={(e) => {
           if (e.key === 'Enter') {
             if (validateTimeInput(value) && validateAlmuerzoRange(value)) {
@@ -36,6 +39,7 @@ export function EditableTimeCell({
               setIsEditing(false);
             } else {
               onError('Formato invalido o fuera de rango 00:00-02:00');
+              setIsEditing(false);
             }
           }
         }}

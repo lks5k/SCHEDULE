@@ -100,6 +100,18 @@ export function EmployeeView() {
 
   const handleSaveAlmuerzo = async (entradaId, newValue) => {
     try {
+      setPairs(prevPairs =>
+        prevPairs.map(pair =>
+          pair.entrada?.id === entradaId
+            ? {
+                ...pair,
+                tiempo_almuerzo: newValue,
+                tiempo_almuerzo_editado: true
+              }
+            : pair
+        )
+      );
+
       const result = await updateTiempoAlmuerzo(entradaId, newValue);
 
       if (result.success) {
@@ -111,11 +123,13 @@ export function EmployeeView() {
         setToastMessage(result.error);
         setToastType('error');
         setShowToast(true);
+        await loadPairs();
       }
     } catch (error) {
       setToastMessage('Error');
       setToastType('error');
       setShowToast(true);
+      await loadPairs();
     }
   };
 

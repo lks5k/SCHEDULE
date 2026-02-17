@@ -11,6 +11,7 @@
  * 4. Registrar en activity_log para auditoría
  */
 
+import { differenceInDays, parseISO } from 'date-fns';
 import { supabase } from '@/config/supabase.config';
 import { checkLastRecord } from '@/modules/auth/services/auth.service';
 import { RECORD_TYPES, LOG_ACTIONS } from '@/utils/constants.util';
@@ -63,6 +64,34 @@ export const recordAttendance = async (employee, tipo) => {
       };
     }
 
+    // 3.1 NUEVA VALIDACIÓN: Si marca SALIDA, verificar días desde ENTRADA
+    if (tipo === RECORD_TYPES.SALIDA) {
+      const { data: lastEntrada } = await supabase
+        .from('time_records')
+        .select('fecha, timestamp')
+        .eq('employee_id', employee.id)
+        .eq('tipo', RECORD_TYPES.ENTRADA)
+        .is('deleted_at', null)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastEntrada?.timestamp) {
+        const daysDiff = differenceInDays(
+          new Date(),
+          parseISO(lastEntrada.timestamp)
+        );
+
+        if (daysDiff > 1) {
+          return {
+            success: false,
+            error: `⚠️ Última ENTRADA fue hace ${daysDiff} días (${lastEntrada.fecha}). Por favor contacte administrador para corregir.`,
+            requiresAdmin: true
+          };
+        }
+      }
+    }
+
     // 4. Obtener fecha/hora actual de Colombia
     const dateTime = getCurrentDateTimeColombia();
 
@@ -73,9 +102,12 @@ export const recordAttendance = async (employee, tipo) => {
       fecha: dateTime.fecha,      // "DD/MM/YYYY"
       dia: dateTime.dia,          // "lunes", "martes", etc.
       tipo: tipo,                 // "ENTRADA" o "SALIDA"
-      hora: dateTime.hora         // "HH:MM:SS"
-      // timestamp se auto-genera en Supabase (UTC)
-      // observaciones default ''
+      hora: dateTime.hora,        // "HH:MM:SS"
+      timestamp: new Date().toISOString(),
+      tiempo_almuerzo: tipo === RECORD_TYPES.ENTRADA ? '02:00' : null,
+      tiempo_almuerzo_editado: false,
+      licencia_remunerada: false,
+      observaciones: ''
     };
 
     // 6. Insertar en Supabase
@@ -90,6 +122,26 @@ export const recordAttendance = async (employee, tipo) => {
         success: false,
         error: 'Error al registrar marcación en la base de datos'
       };
+    }
+
+    // 6.1 Si marcó SALIDA, bloquear almuerzo de la ENTRADA asociada
+    if (tipo === RECORD_TYPES.SALIDA) {
+      const { data: lastEntrada } = await supabase
+        .from('time_records')
+        .select('id')
+        .eq('employee_id', employee.id)
+        .eq('tipo', RECORD_TYPES.ENTRADA)
+        .is('deleted_at', null)
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastEntrada) {
+        await supabase
+          .from('time_records')
+          .update({ tiempo_almuerzo_editado: true })
+          .eq('id', lastEntrada.id);
+      }
     }
 
     // 7. Registrar en activity_log

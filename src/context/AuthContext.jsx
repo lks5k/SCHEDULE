@@ -53,19 +53,23 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('currentUser');
   }, [currentUser]);
 
-  // Timer inactividad centralizado por rol
+  // Timer inactividad: timeouts configurables desde Config (localStorage)
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
 
     let inactivityTimer;
 
-    const TIMEOUTS = {
-      employee: 10000,
-      admin: 10000,
-      master: 10000
-    };
+    const employeeTimeout = parseInt(
+      localStorage.getItem('employeeLogoutTimeout') || '10000',
+      10
+    );
+    const adminTimeout = parseInt(
+      localStorage.getItem('adminLogoutTimeout') || '10000',
+      10
+    );
 
-    const timeout = TIMEOUTS[currentUser.role] || 10000;
+    const timeout =
+      currentUser.role === 'employee' ? employeeTimeout : adminTimeout;
 
     const resetTimer = () => {
       clearTimeout(inactivityTimer);

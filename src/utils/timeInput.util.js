@@ -11,13 +11,17 @@
  * @returns {string} Valor formateado HH:MM
  */
 export const formatTimeInput = (value) => {
+  // Remover todo excepto números
   const cleaned = value.replace(/[^0-9]/g, '');
   
   if (cleaned.length === 0) return '';
-  if (cleaned.length <= 2) return cleaned;
   
-  const hours = cleaned.substring(0, 2);
-  const minutes = cleaned.substring(2, 4);
+  // Auto-pad a 4 dígitos
+  const padded = cleaned.padStart(4, '0').substring(0, 4);
+  
+  // Insertar :
+  const hours = padded.substring(0, 2);
+  const minutes = padded.substring(2, 4);
   
   return `${hours}:${minutes}`;
 };

@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button, Toast } from '@/components/common';
 import { EditableTimeCell } from '@/components/common/EditableTimeCell';
+import { ConfigView } from './ConfigView';
 import { getAllRecordsRealtime, subscribeToRecords } from '@/services/attendance/attendance.service';
 import { getEmployeePairs, updateTiempoAlmuerzo } from '@/services/attendance/pairs.service';
 import { supabase } from '@/config/supabase.config';
@@ -21,7 +22,7 @@ export function AdminView() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // 'all', 'today', 'ENTRADA', 'SALIDA'
-  const [viewMode, setViewMode] = useState('table'); // 'table' o 'realtime'
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'realtime' | 'config'
   const [allPairs, setAllPairs] = useState([]);
 
   // Toast
@@ -179,12 +180,12 @@ export function AdminView() {
 
         {/* Tabs de Vista */}
         <div className="bg-slate-800 rounded-2xl p-4 mb-6 border border-slate-700">
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             <button
               onClick={() => setViewMode('table')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                viewMode === 'table' 
-                  ? 'bg-blue-600 text-white' 
+                viewMode === 'table'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
@@ -193,12 +194,22 @@ export function AdminView() {
             <button
               onClick={() => setViewMode('realtime')}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                viewMode === 'realtime' 
-                  ? 'bg-blue-600 text-white' 
+                viewMode === 'realtime'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
               ⚡ Tiempo Real
+            </button>
+            <button
+              onClick={() => setViewMode('config')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                viewMode === 'config'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              ⚙️ Configuración
             </button>
             <button
               onClick={() => {
@@ -212,6 +223,11 @@ export function AdminView() {
           </div>
         </div>
 
+        {/* Contenido según tab */}
+        {viewMode === 'config' ? (
+          <ConfigView />
+        ) : (
+          <>
         {/* Filtros (solo para vista Tiempo Real) */}
         {viewMode === 'realtime' && (
           <div className="bg-slate-800 rounded-2xl p-4 mb-6 border border-slate-700">
@@ -260,7 +276,7 @@ export function AdminView() {
           </div>
         )}
 
-        {/* Contenido condicional */}
+        {/* Tabla Parejas o Tiempo Real */}
         {viewMode === 'table' ? (
           /* TABLA DE PAREJAS */
           <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
@@ -323,6 +339,7 @@ export function AdminView() {
                                 setToastType('error');
                                 setShowToast(true);
                               }}
+                              disabled={true}
                             />
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -396,8 +413,13 @@ export function AdminView() {
                             {record.tipo}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-300 font-mono text-sm">
-                          {record.fecha}
+                        <td className="px-4 py-3 text-white font-mono text-sm">
+                          {(() => {
+                            const parts = record.fecha.split('/');
+                            return parts.length === 3
+                              ? `${parts[2]}/${parts[1]}/${parts[0]}`
+                              : record.fecha;
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-slate-300 font-mono text-sm font-semibold">
                           {record.hora}
@@ -454,6 +476,9 @@ export function AdminView() {
             </div>
           </div>
         )}
+          </>
+        )}
+
       </div>
     </div>
   );
