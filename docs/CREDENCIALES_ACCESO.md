@@ -3,6 +3,7 @@
 **Actualización:** 04 de Febrero de 2026  
 **Versión:** V3.0 - Cédulas Numéricas
 
+
 ---
 
 ## 👥 USUARIOS DEL SISTEMA
