@@ -24,9 +24,10 @@ export function EditableTimeCell({
         type="text"
         value={value}
         onChange={(e) => {
-          const formatted = formatTimeInput(e.target.value);
-          if (formatted.length <= 5) {
-            setValue(formatted);
+          // Solo permitir números, sin formatear aún
+          const cleaned = e.target.value.replace(/[^0-9]/g, '');
+          if (cleaned.length <= 4) {
+            setValue(cleaned);
           }
         }}
         onFocus={(e) => {
@@ -34,8 +35,11 @@ export function EditableTimeCell({
         }}
         onKeyPress={(e) => {
           if (e.key === 'Enter') {
-            if (validateTimeInput(value) && validateAlmuerzoRange(value)) {
-              onSave(pair.entrada.id, value);
+            // Formatear AQUÍ antes validar
+            const formatted = formatTimeInput(value);
+
+            if (validateTimeInput(formatted) && validateAlmuerzoRange(formatted)) {
+              onSave(pair.entrada.id, formatted);
               setIsEditing(false);
             } else {
               onError('Formato invalido o fuera de rango 00:00-02:00');
@@ -43,9 +47,14 @@ export function EditableTimeCell({
             }
           }
         }}
-        onBlur={() => setIsEditing(false)}
-        placeholder="HH:MM"
-        maxLength="5"
+        onBlur={() => {
+          // Formatear AQUÍ al perder foco
+          const formatted = formatTimeInput(value);
+          setValue(formatted);
+          setIsEditing(false);
+        }}
+        placeholder="0000"
+        maxLength="4"
         className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-20 font-mono"
         autoFocus
       />
