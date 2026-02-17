@@ -5,14 +5,14 @@
  * RIGOR ABSOLUTO: Sin mocks, sin simulaciones, solo Supabase.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button, Toast } from '@/components/common';
+import { EditableTimeCell } from '@/components/common/EditableTimeCell';
 import { checkLastRecord } from '@/modules/auth/services/auth.service';
 import { recordAttendance } from '@/services/attendance/attendance.service';
 import { getEmployeePairs, updateTiempoAlmuerzo } from '@/services/attendance/pairs.service';
 import { RECORD_TYPES } from '@/utils/constants.util';
-import { formatTimeInput, validateTimeInput, validateAlmuerzoRange } from '@/utils/timeInput.util';
 
 export function EmployeeView() {
   const { currentUser, handleLogout } = useAuth();
@@ -22,56 +22,18 @@ export function EmployeeView() {
   const [processing, setProcessing] = useState(false);
   const [pairs, setPairs] = useState([]);
   
-  const [editingAlmuerzoId, setEditingAlmuerzoId] = useState(null);
-  const [almuerzoValue, setAlmuerzoValue] = useState('');
-  
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('info');
 
-  useEffect(() => {
-    loadInitialState();
-  }, [currentUser]);
-
-  // Sistema de detección de inactividad
-  useEffect(() => {
-    let inactivityTimer;
-
-    const resetTimer = () => {
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(() => {
-        // Logout automático después de 10 segundos de inactividad
-        handleLogout();
-      }, 10000); // 10 segundos
-    };
-
-    // Detectar actividad del usuario
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    
-    events.forEach(event => {
-      document.addEventListener(event, resetTimer, true);
-    });
-
-    // Iniciar timer
-    resetTimer();
-
-    // Cleanup
-    return () => {
-      clearTimeout(inactivityTimer);
-      events.forEach(event => {
-        document.removeEventListener(event, resetTimer, true);
-      });
-    };
-  }, [handleLogout]);
-
-  const loadInitialState = async () => {
+  const loadInitialState = useCallback(async () => {
     if (!currentUser?.id) return;
 
     setLoading(true);
-    
+
     try {
       const lastCheck = await checkLastRecord(currentUser.id);
-      
+
       if (lastCheck.success) {
         setNextAction(lastCheck.nextAction);
       } else {
@@ -79,16 +41,18 @@ export function EmployeeView() {
       }
 
       await loadPairs();
-
     } catch (error) {
-      console.error('Error cargando estado:', error);
       setToastMessage('Error al cargar datos');
       setToastType('error');
       setShowToast(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    loadInitialState();
+  }, [loadInitialState]);
 
   const loadPairs = async () => {
     const result = await getEmployeePairs(currentUser.id);
@@ -134,17 +98,14 @@ export function EmployeeView() {
     }
   };
 
-  const handleSaveAlmuerzo = async (entradaId) => {
-    if (!almuerzoValue) return;
-
+  const handleSaveAlmuerzo = async (entradaId, newValue) => {
     try {
-      const result = await updateTiempoAlmuerzo(entradaId, almuerzoValue);
+      const result = await updateTiempoAlmuerzo(entradaId, newValue);
 
       if (result.success) {
         setToastMessage('Actualizado');
         setToastType('success');
         setShowToast(true);
-        setEditingAlmuerzoId(null);
         await loadPairs();
       } else {
         setToastMessage(result.error);
@@ -262,50 +223,15 @@ export function EmployeeView() {
                           {pair.salida?.hora || '—'}
                         </td>
                         <td className="px-4 py-3 text-slate-300 font-mono text-sm">
-                          {editingAlmuerzoId === pair.entrada?.id ? (
-                            <input
-                              type="text"
-                              value={almuerzoValue}
-                              onChange={(e) => {
-                                const formatted = formatTimeInput(e.target.value);
-                                if (formatted.length <= 5) {
-                                  setAlmuerzoValue(formatted);
-                                }
-                              }}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  if (validateTimeInput(almuerzoValue) && validateAlmuerzoRange(almuerzoValue)) {
-                                    handleSaveAlmuerzo(pair.entrada.id);
-                                  } else {
-                                    setToastMessage('Formato invalido o fuera de rango 00:00-02:00');
-                                    setToastType('error');
-                                    setShowToast(true);
-                                  }
-                                }
-                              }}
-                              onBlur={() => setEditingAlmuerzoId(null)}
-                              placeholder="HH:MM"
-                              maxLength="5"
-                              className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-20 font-mono"
-                              autoFocus
-                            />
-                          ) : (
-                            <span
-                              onClick={() => {
-                                if (!pair.tiempo_almuerzo_editado && pair.entrada) {
-                                  setEditingAlmuerzoId(pair.entrada.id);
-                                  setAlmuerzoValue(pair.tiempo_almuerzo);
-                                }
-                              }}
-                              className={`font-mono ${
-                                pair.tiempo_almuerzo_editado 
-                                  ? 'cursor-not-allowed opacity-50' 
-                                  : 'cursor-pointer hover:text-blue-400'
-                              }`}
-                            >
-                              {pair.tiempo_almuerzo}
-                            </span>
-                          )}
+                          <EditableTimeCell
+                            pair={pair}
+                            onSave={handleSaveAlmuerzo}
+                            onError={(msg) => {
+                              setToastMessage(msg);
+                              setToastType('error');
+                              setShowToast(true);
+                            }}
+                          />
                         </td>
                         <td className="px-4 py-3 text-center">
                           {pair.licencia_remunerada ? (

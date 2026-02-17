@@ -8,7 +8,7 @@
 // ============================================
 // CONFIGURACIÓN
 // ============================================
-export { supabase, testConnection } from './config/supabase.config.js';
+export { supabase } from './config/supabase.config.js';
 
 // ============================================
 // UTILIDADES

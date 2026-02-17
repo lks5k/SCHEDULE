@@ -35,11 +35,3 @@ export {
   getActivityByDateRange,
   cleanOldLogs
 } from './services/activityLog.service.js';
-
-// Servicios de marcaciones
-export {
-  recordAttendance,
-  getEmployeeRecentRecords,
-  calculateWorkedHours,
-  getAttendanceStats
-} from './services/records.service.js';

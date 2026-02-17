@@ -47,9 +47,6 @@ export const login = async (cedula, password) => {
       .is('deleted_at', null)
       .maybeSingle();
 
-    // LOG: Respuesta de Supabase (solo para fase de prueba)
-    console.log('📥 [DEBUG] Datos retornados de Supabase:', data);
-
     // Si hay error en la consulta (problema de conexión o permisos RLS)
     if (error) {
       await logActivity(LOG_ACTIONS.LOGIN_FAILED, `Error de consulta para cédula: ${trimmedCedula}`);
@@ -154,9 +151,10 @@ export const checkLastRecord = async (employeeId) => {
       .limit(1);
 
     if (error) {
-      console.warn('Error consultando Supabase, usando localStorage:', error.message);
-      // Fallback a localStorage
-      return checkLastRecordFromLocalStorage(employeeId);
+      return {
+        success: false,
+        error: error.message
+      };
     }
 
     // Si no hay registros, el próximo es ENTRADA
@@ -181,45 +179,6 @@ export const checkLastRecord = async (employeeId) => {
 
   } catch (error) {
     console.error('Error verificando último registro:', error);
-    // Fallback a localStorage en caso de error
-    return checkLastRecordFromLocalStorage(employeeId);
-  }
-};
-
-/**
- * Verifica el último registro desde localStorage (fallback)
- * @param {number} employeeId - ID del empleado
- * @returns {Object}
- */
-const checkLastRecordFromLocalStorage = (employeeId) => {
-  try {
-    const { getTimeRecords } = require('../../../utils/localStorage.util.js');
-    const records = getTimeRecords();
-
-    // Filtrar registros del empleado
-    const employeeRecords = records
-      .filter(r => r.employeeId === employeeId)
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    if (employeeRecords.length === 0) {
-      return {
-        success: true,
-        nextAction: 'ENTRADA',
-        lastRecord: null
-      };
-    }
-
-    const lastRecord = employeeRecords[0];
-    const nextAction = lastRecord.tipo === 'ENTRADA' ? 'SALIDA' : 'ENTRADA';
-
-    return {
-      success: true,
-      nextAction,
-      lastRecord
-    };
-
-  } catch (error) {
-    console.error('Error en fallback de localStorage:', error);
     return {
       success: false,
       error: 'Error verificando último registro'
