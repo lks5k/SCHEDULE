@@ -343,3 +343,113 @@ STATUS: ACTIVO
 AUTOR: Claude + Lukas
 
 Este documento debe actualizarse CADA VEZ que cambia logica negocio.
+
+CHANGELOG FIX 6 (18 Feb 2026):
+
+CAMBIOS CRITICOS:
+
+1. Campo observaciones obsoleto ELIMINADO
+- Se elimino columna "observaciones" (sin numero) de time_records
+- Solo existen: observacion_1, observacion_2, observacion_3
+- Cada una con su flag _editado
+
+2. Validacion bloqueo usuario reforzada
+- Login verifica blocked === true
+- Si bloqueado, mensaje: "Usuario desactivado. Contacte administrador."
+- Usuario bloqueado NO puede acceder sistema
+
+3. Password nivel 2 seguridad
+- Minimo 8 caracteres
+- Obligatorio: 1 mayuscula, 1 minuscula, 1 numero
+- Regex: /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/
+- Generador automatico cumple requisitos
+
+4. Crear usuario con confirmacion password
+- Campo confirmPassword agregado
+- Validacion passwords coinciden
+- Validaciones ejecutan antes INSERT
+- Mensaje error especifico por validacion
+
+5. Vista empleado sin observaciones
+- Columna observaciones eliminada tabla empleado
+- Solo visible en Vista Parejas admin/master
+- 3 columnas independientes
+
+REGLAS ACTUALIZADAS:
+
+REGLA 9: VALIDACION PASSWORDS
+
+Definicion:
+  Toda password debe cumplir nivel 2 seguridad
+
+Requisitos:
+  - Minimo 8 caracteres
+  - Al menos 1 letra mayuscula
+  - Al menos 1 letra minuscula
+  - Al menos 1 numero
+  - Caracteres especiales opcionales
+
+Validacion:
+  Frontend: Regex + length check
+  Backend: Misma validacion antes UPDATE/INSERT
+
+Generador:
+  Crea passwords 10 caracteres
+  Garantiza 1 mayuscula, 1 minuscula, 1 numero
+  Resto aleatorio de conjunto seguro
+
+REGLA 10: BLOQUEO USUARIOS
+
+Definicion:
+  Usuario bloqueado no puede acceder sistema
+
+Implementacion:
+  Campo: employees.blocked (boolean)
+  Default: false
+  Toggle: Admin/Master en gestion usuarios
+
+Validacion Login:
+  1. Verificar cedula existe
+  2. Verificar deleted_at null
+  3. Verificar blocked false
+  4. Verificar password coincide
+  
+Mensaje bloqueo:
+  "Usuario desactivado. Contacte administrador."
+
+REGLA 11: OBSERVACIONES ESTRUCTURA
+
+Definicion:
+  Solo empleado puede tener observaciones
+  3 campos independientes por registro ENTRADA
+
+Campos DB:
+  - observacion_1 (TEXT)
+  - observacion_1_editado (BOOLEAN)
+  - observacion_2 (TEXT)
+  - observacion_2_editado (BOOLEAN)
+  - observacion_3 (TEXT)
+  - observacion_3_editado (BOOLEAN)
+
+Visibilidad:
+  Admin/Master Vista Parejas: SI
+  Admin/Master Tiempo Real: NO
+  Empleado: NO
+
+Edicion:
+  Una sola vez por campo
+  Se bloquea al guardar
+  Actualiza reactivo sin refresh
+
+MIGRACIONES EJECUTADAS:
+
+FIX 5:
+ALTER TABLE time_records ADD COLUMN observacion_1 TEXT;
+ALTER TABLE time_records ADD COLUMN observacion_1_editado BOOLEAN DEFAULT false;
+ALTER TABLE time_records ADD COLUMN observacion_2 TEXT;
+ALTER TABLE time_records ADD COLUMN observacion_2_editado BOOLEAN DEFAULT false;
+ALTER TABLE time_records ADD COLUMN observacion_3 TEXT;
+ALTER TABLE time_records ADD COLUMN observacion_3_editado BOOLEAN DEFAULT false;
+
+FIX 6:
+ALTER TABLE time_records DROP COLUMN observaciones;
