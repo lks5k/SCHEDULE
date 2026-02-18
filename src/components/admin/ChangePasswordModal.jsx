@@ -12,11 +12,16 @@ export function ChangePasswordModal({ isOpen, onClose, userId, userName }) {
 
   if (!isOpen) return null;
 
-  // CAMBIO 6: Generador de contraseña idéntico al de AddUserModal
   const generatePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-    let pwd = '';
-    for (let i = 0; i < 10; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    const lower = 'abcdefghijkmnpqrstuvwxyz';
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const nums = '23456789';
+    const chars = lower + upper + nums;
+    let pwd = upper.charAt(Math.floor(Math.random() * upper.length));
+    pwd += lower.charAt(Math.floor(Math.random() * lower.length));
+    pwd += nums.charAt(Math.floor(Math.random() * nums.length));
+    for (let i = 3; i < 10; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    pwd = pwd.split('').sort(() => Math.random() - 0.5).join('');
     setNewPassword(pwd);
     setConfirmPassword(pwd);
   };
@@ -24,8 +29,22 @@ export function ChangePasswordModal({ isOpen, onClose, userId, userName }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (newPassword.length < 8) {
+      setToastMessage('Password mínimo 8 caracteres');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      setToastMessage('Password debe tener mayúscula, minúscula y número');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
-      setToastMessage('Las contraseñas no coinciden');
+      setToastMessage('Contraseñas no coinciden');
       setToastType('error');
       setShowToast(true);
       return;
@@ -39,16 +58,14 @@ export function ChangePasswordModal({ isOpen, onClose, userId, userName }) {
       .eq('id', userId);
 
     if (error) {
-      setToastMessage('Error al cambiar contraseña');
+      setToastMessage('Error: ' + error.message);
       setToastType('error');
     } else {
-      setToastMessage('Contraseña actualizada exitosamente');
+      setToastMessage('Contraseña actualizada');
       setToastType('success');
-      setTimeout(() => {
-        onClose();
-        setNewPassword('');
-        setConfirmPassword('');
-      }, 1500);
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => onClose(), 1500);
     }
 
     setShowToast(true);
@@ -66,15 +83,16 @@ export function ChangePasswordModal({ isOpen, onClose, userId, userName }) {
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-white mb-2">Nueva contraseña</label>
+            <label className="block text-white mb-2">Nueva Contraseña</label>
             <div className="flex gap-2">
               <input
-                type="text"
+                type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
+                placeholder="Min 8 caracteres, Aa1"
                 required
-                minLength="6"
+                minLength="8"
               />
               <button
                 type="button"
@@ -86,13 +104,15 @@ export function ChangePasswordModal({ isOpen, onClose, userId, userName }) {
             </div>
           </div>
           <div>
-            <label className="block text-white mb-2">Confirmar contraseña</label>
+            <label className="block text-white mb-2">Confirmar Contraseña</label>
             <input
-              type="text"
+              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
+              placeholder="Repetir contraseña"
               required
+              minLength="8"
             />
           </div>
           <div className="flex gap-4 pt-4">

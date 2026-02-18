@@ -208,13 +208,12 @@ export function EmployeeView() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Lic. Remun.</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Total Horas</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Total Decimal</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Observaciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700">
                 {pairs.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan="8" className="px-4 py-8 text-center text-slate-400">
                       No hay registros
                     </td>
                   </tr>
@@ -260,9 +259,6 @@ export function EmployeeView() {
                         </td>
                         <td className="px-4 py-3 text-blue-400 font-mono font-semibold text-sm">
                           {pair.total_horas_decimal ? pair.total_horas_decimal.toFixed(2) : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-slate-400 text-sm max-w-xs truncate">
-                          {pair.observaciones || '—'}
                         </td>
                       </tr>
                     );

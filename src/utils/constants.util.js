@@ -78,7 +78,7 @@ export const MESSAGES = {
   ERROR: {
     EMPTY_PASSWORD: 'Ingrese una contraseña',
     INCORRECT_PASSWORD: 'Contraseña incorrecta',
-    USER_BLOCKED: 'Usuario bloqueado. Contacte al administrador',
+    USER_BLOCKED: 'Usuario desactivado. Contacte administrador.',
     LOADING_DATA: 'Cargando datos, intente de nuevo en un momento...',
     INVALID_DATA: 'Datos inválidos',
     CONNECTION_ERROR: 'Error de conexión. Usando modo local',

@@ -18,16 +18,15 @@ export function UsersListModal({ isOpen, onClose }) {
 
   const loadUsers = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('employees')
       .select('*')
       .is('deleted_at', null)
       .order('name');
-    setUsers(data || []);
+    if (!error) setUsers(data || []);
     setLoading(false);
   };
 
-  // CAMBIO 3: Actualización optimista + mensaje correcto según estado nuevo
   const toggleBlock = async (userId, currentBlocked) => {
     const newBlocked = !currentBlocked;
     const { error } = await supabase
@@ -38,11 +37,9 @@ export function UsersListModal({ isOpen, onClose }) {
     if (!error) {
       setToastMessage(newBlocked ? 'Usuario bloqueado' : 'Usuario desbloqueado');
       setShowToast(true);
-      setUsers(prevUsers =>
-        prevUsers.map(u => u.id === userId ? { ...u, blocked: newBlocked } : u)
-      );
+      await loadUsers();
     } else {
-      setToastMessage('Error al bloquear usuario');
+      setToastMessage('Error: ' + error.message);
       setShowToast(true);
     }
   };

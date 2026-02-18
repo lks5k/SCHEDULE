@@ -7,6 +7,7 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
     name: '',
     cedula: '',
     password: '',
+    confirmPassword: '',
     role: 'employee',
   });
   const [loading, setLoading] = useState(false);
@@ -16,27 +17,52 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
 
   if (!isOpen) return null;
 
-  // CAMBIO 5: Generador de contraseña sin caracteres ambiguos
   const generatePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-    let pwd = '';
-    for (let i = 0; i < 10; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
-    setFormData({ ...formData, password: pwd });
+    const lower = 'abcdefghijkmnpqrstuvwxyz';
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const nums = '23456789';
+    const chars = lower + upper + nums;
+    let pwd = upper.charAt(Math.floor(Math.random() * upper.length));
+    pwd += lower.charAt(Math.floor(Math.random() * lower.length));
+    pwd += nums.charAt(Math.floor(Math.random() * nums.length));
+    for (let i = 3; i < 10; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    pwd = pwd.split('').sort(() => Math.random() - 0.5).join('');
+    setFormData({ ...formData, password: pwd, confirmPassword: pwd });
   };
 
-  // CAMBIO 4: Validación de cédula y nombre antes de insertar
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!/^\d{7,10}$/.test(formData.cedula)) {
-      setToastMessage('Cédula debe tener 7-10 dígitos');
+      setToastMessage('Cedula: 7-10 dígitos numéricos');
       setToastType('error');
       setShowToast(true);
       return;
     }
 
     if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.name)) {
-      setToastMessage('Nombre solo permite letras');
+      setToastMessage('Nombre: solo letras y espacios');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setToastMessage('Password: mínimo 8 caracteres');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      setToastMessage('Password: mayúscula, minúscula y número');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setToastMessage('Contraseñas no coinciden');
       setToastType('error');
       setShowToast(true);
       return;
@@ -45,7 +71,6 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
     setLoading(true);
 
     try {
-      // CAMBIO 4: maybeSingle() evita error PGRST116 cuando no existe
       const { data: existing } = await supabase
         .from('employees')
         .select('id')
@@ -60,24 +85,24 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
         return;
       }
 
-      const { error } = await supabase.from('employees').insert({
+      const { error } = await supabase.from('employees').insert([{
         name: formData.name,
         cedula: formData.cedula,
         password: formData.password,
         role: formData.role,
         blocked: false,
-      });
+      }]);
 
       if (error) throw error;
 
-      setToastMessage('Usuario creado');
+      setToastMessage('Usuario creado exitosamente');
       setToastType('success');
       setShowToast(true);
 
       setTimeout(() => {
         onSuccess();
         onClose();
-        setFormData({ name: '', cedula: '', password: '', role: 'employee' });
+        setFormData({ name: '', cedula: '', password: '', confirmPassword: '', role: 'employee' });
       }, 1500);
     } catch (error) {
       setToastMessage('Error: ' + error.message);
@@ -119,18 +144,17 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
               required
             />
           </div>
-          {/* CAMBIO 5: Campo contraseña con botón generador */}
           <div>
             <label className="block text-white mb-2">Contraseña</label>
             <div className="flex gap-2">
               <input
-                type="text"
-                placeholder="Min 6 caracteres, incluir números"
+                type="password"
+                placeholder="Min 8 chars, Aa1"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
                 required
-                minLength="6"
+                minLength="8"
               />
               <button
                 type="button"
@@ -140,6 +164,18 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
                 Generar
               </button>
             </div>
+          </div>
+          <div>
+            <label className="block text-white mb-2">Confirmar Contraseña</label>
+            <input
+              type="password"
+              placeholder="Repetir contraseña"
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
+              required
+              minLength="8"
+            />
           </div>
           <div>
             <label className="block text-white mb-2">Rol</label>
