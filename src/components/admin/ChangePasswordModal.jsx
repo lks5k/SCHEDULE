@@ -12,6 +12,15 @@ export function ChangePasswordModal({ isOpen, onClose, userId, userName }) {
 
   if (!isOpen) return null;
 
+  // CAMBIO 6: Generador de contraseña idéntico al de AddUserModal
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let pwd = '';
+    for (let i = 0; i < 10; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    setNewPassword(pwd);
+    setConfirmPassword(pwd);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -58,18 +67,28 @@ export function ChangePasswordModal({ isOpen, onClose, userId, userName }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-white mb-2">Nueva contraseña</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
-              required
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
+                required
+                minLength="6"
+              />
+              <button
+                type="button"
+                onClick={generatePassword}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+              >
+                Generar
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-white mb-2">Confirmar contraseña</label>
             <input
-              type="password"
+              type="text"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"

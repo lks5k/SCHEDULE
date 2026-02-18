@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/config/supabase.config';
 import { Button, Toast } from '@/components/common';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 export function UsersListModal({ isOpen, onClose }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  // CAMBIO 6: Estado para modal de cambio de contraseña
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
     if (isOpen) loadUsers();
@@ -23,16 +27,23 @@ export function UsersListModal({ isOpen, onClose }) {
     setLoading(false);
   };
 
+  // CAMBIO 3: Actualización optimista + mensaje correcto según estado nuevo
   const toggleBlock = async (userId, currentBlocked) => {
+    const newBlocked = !currentBlocked;
     const { error } = await supabase
       .from('employees')
-      .update({ blocked: !currentBlocked })
+      .update({ blocked: newBlocked })
       .eq('id', userId);
 
     if (!error) {
-      setToastMessage(currentBlocked ? 'Usuario desbloqueado' : 'Usuario bloqueado');
+      setToastMessage(newBlocked ? 'Usuario bloqueado' : 'Usuario desbloqueado');
       setShowToast(true);
-      loadUsers();
+      setUsers(prevUsers =>
+        prevUsers.map(u => u.id === userId ? { ...u, blocked: newBlocked } : u)
+      );
+    } else {
+      setToastMessage('Error al bloquear usuario');
+      setShowToast(true);
     }
   };
 
@@ -64,7 +75,8 @@ export function UsersListModal({ isOpen, onClose }) {
                 <th className="px-4 py-3 text-left text-white font-semibold">Cédula</th>
                 <th className="px-4 py-3 text-left text-white font-semibold">Rol</th>
                 <th className="px-4 py-3 text-left text-white font-semibold">Estado</th>
-                <th className="px-4 py-3 text-left text-white font-semibold">Acción</th>
+                {/* CAMBIO 6: Columna de acciones con botón cambiar contraseña */}
+                <th className="px-4 py-3 text-left text-white font-semibold">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700">
@@ -79,13 +91,20 @@ export function UsersListModal({ isOpen, onClose }) {
                       : <span className="text-green-400 font-medium">Activo</span>
                     }
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 flex gap-2">
                     <Button
                       onClick={() => toggleBlock(user.id, user.blocked)}
                       variant={user.blocked ? 'primary' : 'danger'}
                       className="text-sm px-3 py-1"
                     >
                       {user.blocked ? 'Desbloquear' : 'Bloquear'}
+                    </Button>
+                    <Button
+                      onClick={() => { setSelectedUser(user); setShowChangePassword(true); }}
+                      variant="secondary"
+                      className="text-sm px-3 py-1"
+                    >
+                      Cambiar Pass
                     </Button>
                   </td>
                 </tr>
@@ -94,6 +113,16 @@ export function UsersListModal({ isOpen, onClose }) {
           </table>
         )}
       </div>
+
+      {/* CAMBIO 6: Modal de cambio de contraseña */}
+      {selectedUser && (
+        <ChangePasswordModal
+          isOpen={showChangePassword}
+          onClose={() => { setShowChangePassword(false); setSelectedUser(null); }}
+          userId={selectedUser.id}
+          userName={selectedUser.name}
+        />
+      )}
     </div>
   );
 }

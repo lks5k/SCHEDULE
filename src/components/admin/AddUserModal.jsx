@@ -16,16 +16,41 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
 
   if (!isOpen) return null;
 
+  // CAMBIO 5: Generador de contraseña sin caracteres ambiguos
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let pwd = '';
+    for (let i = 0; i < 10; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    setFormData({ ...formData, password: pwd });
+  };
+
+  // CAMBIO 4: Validación de cédula y nombre antes de insertar
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!/^\d{7,10}$/.test(formData.cedula)) {
+      setToastMessage('Cédula debe tener 7-10 dígitos');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.name)) {
+      setToastMessage('Nombre solo permite letras');
+      setToastType('error');
+      setShowToast(true);
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // CAMBIO 4: maybeSingle() evita error PGRST116 cuando no existe
       const { data: existing } = await supabase
         .from('employees')
-        .select('cedula')
+        .select('id')
         .eq('cedula', formData.cedula)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         setToastMessage('Cédula ya existe');
@@ -35,18 +60,17 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
         return;
       }
 
-      const { error } = await supabase.from('employees').insert([{
+      const { error } = await supabase.from('employees').insert({
         name: formData.name,
         cedula: formData.cedula,
         password: formData.password,
         role: formData.role,
         blocked: false,
-        created_at: new Date().toISOString(),
-      }]);
+      });
 
       if (error) throw error;
 
-      setToastMessage('Usuario creado exitosamente');
+      setToastMessage('Usuario creado');
       setToastType('success');
       setShowToast(true);
 
@@ -56,7 +80,7 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
         setFormData({ name: '', cedula: '', password: '', role: 'employee' });
       }, 1500);
     } catch (error) {
-      setToastMessage('Error al crear usuario');
+      setToastMessage('Error: ' + error.message);
       setToastType('error');
       setShowToast(true);
     } finally {
@@ -76,6 +100,7 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
             <label className="block text-white mb-2">Nombre</label>
             <input
               type="text"
+              placeholder="Ej: Juan Perez"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
@@ -86,21 +111,35 @@ export function AddUserModal({ isOpen, onClose, onSuccess }) {
             <label className="block text-white mb-2">Cédula</label>
             <input
               type="text"
+              placeholder="Ej: 1234567890"
               value={formData.cedula}
+              maxLength="10"
               onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
               className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
               required
             />
           </div>
+          {/* CAMBIO 5: Campo contraseña con botón generador */}
           <div>
             <label className="block text-white mb-2">Contraseña</label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
-              required
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Min 6 caracteres, incluir números"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500"
+                required
+                minLength="6"
+              />
+              <button
+                type="button"
+                onClick={generatePassword}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors"
+              >
+                Generar
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-white mb-2">Rol</label>

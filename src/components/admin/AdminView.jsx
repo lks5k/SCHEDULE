@@ -1,8 +1,9 @@
 /**
- * VISTA ADMINISTRADOR/MAESTRO V4.0
+ * VISTA ADMINISTRADOR/MAESTRO V5.0
  *
- * Dashboard con gestión de usuarios, filtros con contadores,
- * observaciones inline y sin límite de pares de asistencia.
+ * FIX 5: Observaciones 3 columnas, filtros parejas interactivos,
+ * almuerzo optimista, loadRecords sin límite, observaciones eliminadas
+ * de Tiempo Real.
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -13,7 +14,7 @@ import { ConfigView } from './ConfigView';
 import { AddUserModal } from './AddUserModal';
 import { UsersListModal } from './UsersListModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
-import { getAllRecordsRealtime, subscribeToRecords } from '@/services/attendance/attendance.service';
+import { subscribeToRecords } from '@/services/attendance/attendance.service';
 import { getAllEmployeePairs, updateTiempoAlmuerzo } from '@/services/attendance/pairs.service';
 import { supabase } from '@/config/supabase.config';
 import { RECORD_TYPES } from '@/utils/constants.util';
@@ -28,8 +29,12 @@ export function AdminView() {
   const [viewMode, setViewMode] = useState('table');
   const [allPairs, setAllPairs] = useState([]);
 
-  // Observaciones inline en tabla Tiempo Real
+  // Filtros Vista Parejas
+  const [filtroParejas, setFiltroParejas] = useState('todos');
+
+  // Observaciones inline en Vista Parejas
   const [editingObs, setEditingObs] = useState(null);
+  const [obsField, setObsField] = useState('');
   const [obsValue, setObsValue] = useState('');
 
   // Modales gestión de usuarios
@@ -43,7 +48,7 @@ export function AdminView() {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('info');
 
-  // --- Computed ---
+  // --- Computed Tiempo Real ---
 
   const recordsFiltrados = useMemo(() => {
     const hoy = new Date().toISOString().split('T')[0];
@@ -56,10 +61,28 @@ export function AdminView() {
   }, [records, filtro]);
 
   const contadores = useMemo(() => ({
-    total:   records.length,
+    total:    records.length,
     entradas: records.filter(r => r.tipo === 'ENTRADA').length,
     salidas:  records.filter(r => r.tipo === 'SALIDA').length,
   }), [records]);
+
+  // --- Computed Vista Parejas ---
+
+  const pairsFiltrados = useMemo(() => {
+    const hoy = new Date().toISOString().split('T')[0];
+    switch (filtroParejas) {
+      case 'hoy':        return allPairs.filter(p => p.entrada?.timestamp?.startsWith(hoy));
+      case 'completas':  return allPairs.filter(p => p.entrada && p.salida);
+      case 'incompletas': return allPairs.filter(p => p.entrada && !p.salida);
+      default:           return allPairs;
+    }
+  }, [allPairs, filtroParejas]);
+
+  const contadoresParejas = useMemo(() => ({
+    total:       allPairs.length,
+    completas:   allPairs.filter(p => p.entrada && p.salida).length,
+    incompletas: allPairs.filter(p => p.entrada && !p.salida).length,
+  }), [allPairs]);
 
   // --- Data loading ---
 
@@ -81,24 +104,16 @@ export function AdminView() {
     return () => { subscription.unsubscribe(); };
   }, [loadData]);
 
+  // CAMBIO 2: Carga TODOS los registros sin límite ni filtro por empleado
   const loadRecords = async () => {
     setLoading(true);
-    try {
-      const result = await getAllRecordsRealtime();
-      if (result.success) {
-        setRecords(result.data);
-      } else {
-        setToastMessage('Error al cargar registros');
-        setToastType('error');
-        setShowToast(true);
-      }
-    } catch (error) {
-      setToastMessage('Error al cargar registros');
-      setToastType('error');
-      setShowToast(true);
-    } finally {
-      setLoading(false);
-    }
+    const { data, error } = await supabase
+      .from('time_records')
+      .select('*')
+      .is('deleted_at', null)
+      .order('timestamp', { ascending: false });
+    if (!error && data) setRecords(data);
+    setLoading(false);
   };
 
   const loadAllPairs = async () => {
@@ -135,38 +150,48 @@ export function AdminView() {
     }
   };
 
+  // CAMBIO 1: Actualiza optimistamente antes de persistir
   const handleSaveAlmuerzo = async (entradaId, newValue) => {
-    try {
-      const result = await updateTiempoAlmuerzo(entradaId, newValue);
-      if (result.success) {
-        setToastMessage('Actualizado');
-        setToastType('success');
-        setShowToast(true);
-        await loadAllPairs();
-      } else {
-        setToastMessage(result.error);
-        setToastType('error');
-        setShowToast(true);
-      }
-    } catch (error) {
-      setToastMessage('Error');
+    setAllPairs(prevPairs =>
+      prevPairs.map(pair =>
+        pair.entrada?.id === entradaId
+          ? { ...pair, tiempo_almuerzo: newValue, tiempo_almuerzo_editado: true }
+          : pair
+      )
+    );
+
+    const result = await updateTiempoAlmuerzo(entradaId, newValue);
+    if (result.success) {
+      setToastMessage('Almuerzo actualizado');
+      setToastType('success');
+      setShowToast(true);
+      await loadAllPairs();
+    } else {
+      setToastMessage(result.error);
       setToastType('error');
       setShowToast(true);
+      await loadAllPairs();
     }
   };
 
-  const handleSaveObs = async (recordId) => {
+  // CAMBIO 9: Guarda observación de cualquiera de las 3 columnas
+  const handleSaveObsPair = async (entradaId, field, value) => {
+    const fieldEditado = field + '_editado';
     const { error } = await supabase
       .from('time_records')
-      .update({ observaciones: obsValue })
-      .eq('id', recordId);
+      .update({ [field]: value, [fieldEditado]: true })
+      .eq('id', entradaId);
 
     if (!error) {
       setToastMessage('Observación guardada');
       setToastType('success');
       setShowToast(true);
       setEditingObs(null);
-      loadRecords();
+      await loadAllPairs();
+    } else {
+      setToastMessage('Error al guardar observación');
+      setToastType('error');
+      setShowToast(true);
     }
   };
 
@@ -266,20 +291,51 @@ export function AdminView() {
               </h3>
             </div>
 
-            {/* Barra de contadores Vista Parejas */}
+            {/* CAMBIO 7: Barra de filtros interactivos con contadores */}
             <div className="flex justify-between items-center py-4 px-6 bg-slate-700 border-y border-slate-600">
-              <div className="text-slate-300 text-sm">
-                Total:&nbsp;<span className="font-bold text-white">{allPairs.length}</span>
-                &nbsp;|&nbsp;
-                Completas:&nbsp;<span className="font-bold text-green-400">
-                  {allPairs.filter(p => p.entrada && p.salida).length}
-                </span>
-                &nbsp;|&nbsp;
-                Incompletas:&nbsp;<span className="font-bold text-yellow-400">
-                  {allPairs.filter(p => !p.entrada || !p.salida).length}
-                </span>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setFiltroParejas('todos')}
+                  className={`px-4 py-2 rounded font-semibold transition ${
+                    filtroParejas === 'todos'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                  }`}
+                >
+                  Todos ({contadoresParejas.total})
+                </button>
+                <button
+                  onClick={() => setFiltroParejas('hoy')}
+                  className={`px-4 py-2 rounded font-semibold transition ${
+                    filtroParejas === 'hoy'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                  }`}
+                >
+                  Hoy
+                </button>
+                <button
+                  onClick={() => setFiltroParejas('completas')}
+                  className={`px-4 py-2 rounded font-semibold transition ${
+                    filtroParejas === 'completas'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                  }`}
+                >
+                  Completas ({contadoresParejas.completas})
+                </button>
+                <button
+                  onClick={() => setFiltroParejas('incompletas')}
+                  className={`px-4 py-2 rounded font-semibold transition ${
+                    filtroParejas === 'incompletas'
+                      ? 'bg-yellow-600 text-white'
+                      : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                  }`}
+                >
+                  Incompletas ({contadoresParejas.incompletas})
+                </button>
               </div>
-              <div className="text-white font-semibold">Mostrando: {allPairs.length}</div>
+              <div className="text-white font-semibold">Mostrando: {pairsFiltrados.length}</div>
             </div>
 
             <div className="overflow-x-auto">
@@ -295,18 +351,21 @@ export function AdminView() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Lic. Remun.</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Total Horas</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Total Decimal</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Observaciones</th>
+                    {/* CAMBIO 9: 3 columnas de observaciones */}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Obs 1</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Obs 2</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Obs 3</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700">
-                  {allPairs.length === 0 ? (
+                  {pairsFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan="10" className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan="12" className="px-4 py-8 text-center text-slate-400">
                         No hay registros
                       </td>
                     </tr>
                   ) : (
-                    allPairs.map((pair, index) => {
+                    pairsFiltrados.map((pair, index) => {
                       const fechaParts = pair.fecha.split('/');
                       const fechaISO = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
 
@@ -345,9 +404,41 @@ export function AdminView() {
                           <td className="px-4 py-3 text-blue-400 font-mono font-semibold text-sm">
                             {pair.total_horas_decimal ? pair.total_horas_decimal.toFixed(2) : '—'}
                           </td>
-                          <td className="px-4 py-3 text-slate-400 text-sm max-w-xs truncate">
-                            {pair.observaciones || '—'}
-                          </td>
+
+                          {/* CAMBIO 9: Renderizar 3 columnas de observaciones */}
+                          {['observacion_1', 'observacion_2', 'observacion_3'].map(field => (
+                            <td key={field} className="px-4 py-3 text-slate-400 text-sm">
+                              {editingObs === `${pair.entrada?.id}-${field}` ? (
+                                <input
+                                  type="text"
+                                  value={obsValue}
+                                  onChange={(e) => setObsValue(e.target.value)}
+                                  onKeyPress={(e) => e.key === 'Enter' && handleSaveObsPair(pair.entrada.id, field, obsValue)}
+                                  onBlur={() => setEditingObs(null)}
+                                  className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-full focus:outline-none"
+                                  autoFocus
+                                />
+                              ) : (
+                                <span
+                                  onClick={() => {
+                                    const editado = pair.entrada?.[field + '_editado'];
+                                    if (!editado && pair.entrada) {
+                                      setEditingObs(`${pair.entrada.id}-${field}`);
+                                      setObsField(field);
+                                      setObsValue(pair.entrada?.[field] || '');
+                                    }
+                                  }}
+                                  className={`${
+                                    pair.entrada?.[field + '_editado']
+                                      ? 'cursor-not-allowed opacity-50'
+                                      : 'cursor-pointer hover:text-blue-400'
+                                  } transition-colors`}
+                                >
+                                  {pair.entrada?.[field] || 'Agregar...'}
+                                </span>
+                              )}
+                            </td>
+                          ))}
                         </tr>
                       );
                     })
@@ -360,6 +451,7 @@ export function AdminView() {
         ) : (
 
           /* ── VISTA TIEMPO REAL ─────────────────────────────────────── */
+          /* CAMBIO 10: Sin columna de Observaciones (solo en Vista Parejas) */
           <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
 
             {/* Barra de filtros con contadores */}
@@ -418,13 +510,12 @@ export function AdminView() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Fecha</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Hora</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Día</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Observaciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700">
                   {recordsFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan="5" className="px-4 py-8 text-center text-slate-400">
                         No hay registros para mostrar
                       </td>
                     </tr>
@@ -454,26 +545,6 @@ export function AdminView() {
                           {record.hora?.substring(0, 5)}
                         </td>
                         <td className="px-4 py-3 text-slate-400 capitalize text-sm">{record.dia}</td>
-                        <td className="px-4 py-3 text-slate-400 text-sm">
-                          {editingObs === record.id ? (
-                            <input
-                              type="text"
-                              value={obsValue}
-                              onChange={(e) => setObsValue(e.target.value)}
-                              onKeyPress={(e) => e.key === 'Enter' && handleSaveObs(record.id)}
-                              onBlur={() => setEditingObs(null)}
-                              className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-full focus:outline-none"
-                              autoFocus
-                            />
-                          ) : (
-                            <span
-                              onClick={() => { setEditingObs(record.id); setObsValue(record.observaciones || ''); }}
-                              className="cursor-pointer hover:text-blue-400 transition-colors"
-                            >
-                              {record.observaciones || 'Agregar...'}
-                            </span>
-                          )}
-                        </td>
                       </tr>
                     ))
                   )}

@@ -115,11 +115,21 @@ export const getAllEmployeePairs = async (employeeId) => {
         const pair = {
           fecha: current.fecha,
           dia: current.dia,
-          entrada: { id: current.id, hora: current.hora, timestamp: current.timestamp },
+          entrada: {
+            id: current.id,
+            hora: current.hora,
+            timestamp: current.timestamp,
+            // CAMBIO 9: Exponer las 3 columnas de observaciones
+            observacion_1: current.observacion1 || null,
+            observacion_1_editado: current.observacion1Editado || false,
+            observacion_2: current.observacion2 || null,
+            observacion_2_editado: current.observacion2Editado || false,
+            observacion_3: current.observacion3 || null,
+            observacion_3_editado: current.observacion3Editado || false,
+          },
           salida: nextSalida
             ? { id: nextSalida.id, hora: nextSalida.hora, timestamp: nextSalida.timestamp }
             : null,
-          observaciones: current.observaciones || '',
           tiempo_almuerzo: current.tiempoAlmuerzo || '02:00',
           tiempo_almuerzo_editado: current.tiempoAlmuerzoEditado || false,
           licencia_remunerada: current.licenciaRemunerada || false,
