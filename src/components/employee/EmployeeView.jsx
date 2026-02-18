@@ -232,10 +232,10 @@ export function EmployeeView() {
                           {pair.dia}
                         </td>
                         <td className="px-4 py-3 text-green-400 font-mono font-semibold text-sm">
-                          {pair.entrada?.hora || '—'}
+                          {pair.entrada?.hora?.substring(0, 5) || '—'}
                         </td>
                         <td className="px-4 py-3 text-red-400 font-mono font-semibold text-sm">
-                          {pair.salida?.hora || '—'}
+                          {pair.salida?.hora?.substring(0, 5) || '—'}
                         </td>
                         <td className="px-4 py-3 text-slate-300 font-mono text-sm">
                           <EditableTimeCell

@@ -1,41 +1,70 @@
 /**
- * VISTA ADMINISTRADOR/MAESTRO V3.0
- * 
- * Dashboard en tiempo real con marcaciones de todos los empleados.
- * RIGOR ABSOLUTO: Sin mocks, Supabase Realtime funcional.
+ * VISTA ADMINISTRADOR/MAESTRO V4.0
+ *
+ * Dashboard con gestión de usuarios, filtros con contadores,
+ * observaciones inline y sin límite de pares de asistencia.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button, Toast } from '@/components/common';
 import { EditableTimeCell } from '@/components/common/EditableTimeCell';
 import { ConfigView } from './ConfigView';
+import { AddUserModal } from './AddUserModal';
+import { UsersListModal } from './UsersListModal';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import { getAllRecordsRealtime, subscribeToRecords } from '@/services/attendance/attendance.service';
-import { getEmployeePairs, updateTiempoAlmuerzo } from '@/services/attendance/pairs.service';
+import { getAllEmployeePairs, updateTiempoAlmuerzo } from '@/services/attendance/pairs.service';
 import { supabase } from '@/config/supabase.config';
 import { RECORD_TYPES } from '@/utils/constants.util';
 import { logger } from '@/utils/logger.util';
 
 export function AdminView() {
   const { currentUser, handleLogout } = useAuth();
-  
-  // Estado
+
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // 'all', 'today', 'ENTRADA', 'SALIDA'
-  const [viewMode, setViewMode] = useState('table'); // 'table' | 'realtime' | 'config'
+  const [filtro, setFiltro] = useState('todos');
+  const [viewMode, setViewMode] = useState('table');
   const [allPairs, setAllPairs] = useState([]);
+
+  // Observaciones inline en tabla Tiempo Real
+  const [editingObs, setEditingObs] = useState(null);
+  const [obsValue, setObsValue] = useState('');
+
+  // Modales gestión de usuarios
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [showUsersList, setShowUsersList] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   // Toast
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('info');
 
+  // --- Computed ---
+
+  const recordsFiltrados = useMemo(() => {
+    const hoy = new Date().toISOString().split('T')[0];
+    switch (filtro) {
+      case 'hoy':      return records.filter(r => r.timestamp?.startsWith(hoy));
+      case 'entradas': return records.filter(r => r.tipo === 'ENTRADA');
+      case 'salidas':  return records.filter(r => r.tipo === 'SALIDA');
+      default:         return records;
+    }
+  }, [records, filtro]);
+
+  const contadores = useMemo(() => ({
+    total:   records.length,
+    entradas: records.filter(r => r.tipo === 'ENTRADA').length,
+    salidas:  records.filter(r => r.tipo === 'SALIDA').length,
+  }), [records]);
+
+  // --- Data loading ---
+
   const loadData = useCallback(async () => {
-    await Promise.all([
-      loadRecords(),
-      loadAllPairs()
-    ]);
+    await Promise.all([loadRecords(), loadAllPairs()]);
   }, []);
 
   useEffect(() => {
@@ -49,17 +78,13 @@ export function AdminView() {
       setShowToast(true);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => { subscription.unsubscribe(); };
   }, [loadData]);
 
   const loadRecords = async () => {
     setLoading(true);
-    
     try {
       const result = await getAllRecordsRealtime();
-      
       if (result.success) {
         setRecords(result.data);
       } else {
@@ -86,13 +111,13 @@ export function AdminView() {
       if (!employees) return;
 
       const allPairsData = [];
-      
+
       for (const employee of employees) {
-        const result = await getEmployeePairs(employee.id);
+        const result = await getAllEmployeePairs(employee.id);
         if (result.success && result.pairs) {
           const pairsWithName = result.pairs.map(pair => ({
             ...pair,
-            employee_name: employee.name
+            employee_name: employee.name,
           }));
           allPairsData.push(...pairsWithName);
         }
@@ -113,7 +138,6 @@ export function AdminView() {
   const handleSaveAlmuerzo = async (entradaId, newValue) => {
     try {
       const result = await updateTiempoAlmuerzo(entradaId, newValue);
-
       if (result.success) {
         setToastMessage('Actualizado');
         setToastType('success');
@@ -131,16 +155,22 @@ export function AdminView() {
     }
   };
 
-  // Filtrar registros
-  const filteredRecords = records.filter(record => {
-    if (filter === 'all') return true;
-    if (filter === 'today') {
-      const today = new Date().toLocaleDateString('es-CO');
-      const recordDate = new Date(record.timestamp).toLocaleDateString('es-CO');
-      return today === recordDate;
+  const handleSaveObs = async (recordId) => {
+    const { error } = await supabase
+      .from('time_records')
+      .update({ observaciones: obsValue })
+      .eq('id', recordId);
+
+    if (!error) {
+      setToastMessage('Observación guardada');
+      setToastType('success');
+      setShowToast(true);
+      setEditingObs(null);
+      loadRecords();
     }
-    return record.tipo === filter;
-  });
+  };
+
+  // --- Render ---
 
   if (loading) {
     return (
@@ -156,11 +186,7 @@ export function AdminView() {
   return (
     <div className="min-h-screen bg-slate-900 p-4 md:p-8">
       {showToast && (
-        <Toast 
-          message={toastMessage} 
-          type={toastType} 
-          onClose={() => setShowToast(false)} 
-        />
+        <Toast message={toastMessage} type={toastType} onClose={() => setShowToast(false)} />
       )}
 
       <div className="max-w-7xl mx-auto">
@@ -213,10 +239,7 @@ export function AdminView() {
               ⚙️ Configuración
             </button>
             <button
-              onClick={() => {
-                loadRecords();
-                loadAllPairs();
-              }}
+              onClick={() => { loadRecords(); loadAllPairs(); }}
               className="ml-auto px-4 py-2 rounded-lg font-medium bg-slate-700 text-slate-300 hover:bg-slate-600 transition-all"
             >
               🔄 Actualizar
@@ -226,66 +249,39 @@ export function AdminView() {
 
         {/* Contenido según tab */}
         {viewMode === 'config' ? (
-          <ConfigView />
-        ) : (
           <>
-        {/* Filtros (solo para vista Tiempo Real) */}
-        {viewMode === 'realtime' && (
-          <div className="bg-slate-800 rounded-2xl p-4 mb-6 border border-slate-700">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  filter === 'all' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                Todos ({records.length})
-              </button>
-              <button
-                onClick={() => setFilter('today')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  filter === 'today' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                Hoy
-              </button>
-              <button
-                onClick={() => setFilter(RECORD_TYPES.ENTRADA)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  filter === RECORD_TYPES.ENTRADA 
-                    ? 'bg-green-600 text-white' 
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                🟢 Entradas
-              </button>
-              <button
-                onClick={() => setFilter(RECORD_TYPES.SALIDA)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  filter === RECORD_TYPES.SALIDA 
-                    ? 'bg-red-600 text-white' 
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                🔴 Salidas
-              </button>
+            <div className="flex gap-4 mb-6">
+              <Button onClick={() => setShowAddUser(true)}>Agregar Usuario</Button>
+              <Button onClick={() => setShowUsersList(true)}>Gestionar Usuarios</Button>
             </div>
-          </div>
-        )}
+            <ConfigView />
+          </>
+        ) : viewMode === 'table' ? (
 
-        {/* Tabla Parejas o Tiempo Real */}
-        {viewMode === 'table' ? (
-          /* TABLA DE PAREJAS */
+          /* ── VISTA PAREJAS ─────────────────────────────────────────── */
           <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
             <div className="p-6 border-b border-slate-700">
               <h3 className="text-lg font-semibold text-white">
                 📊 Registros de Asistencia (Parejas)
               </h3>
             </div>
+
+            {/* Barra de contadores Vista Parejas */}
+            <div className="flex justify-between items-center py-4 px-6 bg-slate-700 border-y border-slate-600">
+              <div className="text-slate-300 text-sm">
+                Total:&nbsp;<span className="font-bold text-white">{allPairs.length}</span>
+                &nbsp;|&nbsp;
+                Completas:&nbsp;<span className="font-bold text-green-400">
+                  {allPairs.filter(p => p.entrada && p.salida).length}
+                </span>
+                &nbsp;|&nbsp;
+                Incompletas:&nbsp;<span className="font-bold text-yellow-400">
+                  {allPairs.filter(p => !p.entrada || !p.salida).length}
+                </span>
+              </div>
+              <div className="text-white font-semibold">Mostrando: {allPairs.length}</div>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-700">
@@ -313,23 +309,17 @@ export function AdminView() {
                     allPairs.map((pair, index) => {
                       const fechaParts = pair.fecha.split('/');
                       const fechaISO = `${fechaParts[2]}/${fechaParts[1]}/${fechaParts[0]}`;
-                      
+
                       return (
                         <tr key={index} className="hover:bg-slate-700/50 transition-colors">
-                          <td className="px-4 py-3 text-white font-medium text-sm">
-                            {pair.employee_name}
-                          </td>
-                          <td className="px-4 py-3 text-white font-mono text-sm">
-                            {fechaISO}
-                          </td>
-                          <td className="px-4 py-3 text-slate-300 capitalize text-sm">
-                            {pair.dia}
-                          </td>
+                          <td className="px-4 py-3 text-white font-medium text-sm">{pair.employee_name}</td>
+                          <td className="px-4 py-3 text-white font-mono text-sm">{fechaISO}</td>
+                          <td className="px-4 py-3 text-slate-300 capitalize text-sm">{pair.dia}</td>
                           <td className="px-4 py-3 text-green-400 font-mono font-semibold text-sm">
-                            {pair.entrada?.hora || '—'}
+                            {pair.entrada?.hora?.substring(0, 5) || '—'}
                           </td>
                           <td className="px-4 py-3 text-red-400 font-mono font-semibold text-sm">
-                            {pair.salida?.hora || '—'}
+                            {pair.salida?.hora?.substring(0, 5) || '—'}
                           </td>
                           <td className="px-4 py-3 text-slate-300 font-mono text-sm">
                             <EditableTimeCell
@@ -344,11 +334,10 @@ export function AdminView() {
                             />
                           </td>
                           <td className="px-4 py-3 text-center">
-                            {pair.licencia_remunerada ? (
-                              <span className="text-blue-400">Si</span>
-                            ) : (
-                              <span className="text-slate-600">—</span>
-                            )}
+                            {pair.licencia_remunerada
+                              ? <span className="text-blue-400">Si</span>
+                              : <span className="text-slate-600">—</span>
+                            }
                           </td>
                           <td className="px-4 py-3 text-white font-mono font-semibold text-sm">
                             {pair.total_horas || '—'}
@@ -367,43 +356,82 @@ export function AdminView() {
               </table>
             </div>
           </div>
+
         ) : (
-          /* TABLA DE REGISTROS TIEMPO REAL */
+
+          /* ── VISTA TIEMPO REAL ─────────────────────────────────────── */
           <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+
+            {/* Barra de filtros con contadores */}
+            <div className="flex justify-between items-center py-4 px-6 bg-slate-700 border-y border-slate-600">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setFiltro('todos')}
+                  className={`px-4 py-2 rounded font-semibold transition ${
+                    filtro === 'todos'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                  }`}
+                >
+                  Todos ({contadores.total})
+                </button>
+                <button
+                  onClick={() => setFiltro('hoy')}
+                  className={`px-4 py-2 rounded font-semibold transition ${
+                    filtro === 'hoy'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                  }`}
+                >
+                  Hoy
+                </button>
+                <button
+                  onClick={() => setFiltro('entradas')}
+                  className={`px-4 py-2 rounded font-semibold transition ${
+                    filtro === 'entradas'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                  }`}
+                >
+                  Entradas ({contadores.entradas})
+                </button>
+                <button
+                  onClick={() => setFiltro('salidas')}
+                  className={`px-4 py-2 rounded font-semibold transition ${
+                    filtro === 'salidas'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-slate-600 text-slate-300 hover:bg-slate-500'
+                  }`}
+                >
+                  Salidas ({contadores.salidas})
+                </button>
+              </div>
+              <div className="text-white font-semibold">Mostrando: {recordsFiltrados.length}</div>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Empleado
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Tipo
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Fecha
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Hora
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">
-                      Día
-                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Empleado</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Tipo</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Fecha</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Hora</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Día</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Observaciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700">
-                  {filteredRecords.length === 0 ? (
+                  {recordsFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="px-4 py-8 text-center text-slate-400">
+                      <td colSpan="6" className="px-4 py-8 text-center text-slate-400">
                         No hay registros para mostrar
                       </td>
                     </tr>
                   ) : (
-                    filteredRecords.map((record) => (
+                    recordsFiltrados.map((record) => (
                       <tr key={record.id} className="hover:bg-slate-700/50 transition-colors">
-                        <td className="px-4 py-3 text-white">
-                          {record.employee_name}
-                        </td>
+                        <td className="px-4 py-3 text-white">{record.employee_name}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
                             record.tipo === RECORD_TYPES.ENTRADA
@@ -423,10 +451,28 @@ export function AdminView() {
                           })()}
                         </td>
                         <td className="px-4 py-3 text-slate-300 font-mono text-sm font-semibold">
-                          {record.hora}
+                          {record.hora?.substring(0, 5)}
                         </td>
-                        <td className="px-4 py-3 text-slate-400 capitalize text-sm">
-                          {record.dia}
+                        <td className="px-4 py-3 text-slate-400 capitalize text-sm">{record.dia}</td>
+                        <td className="px-4 py-3 text-slate-400 text-sm">
+                          {editingObs === record.id ? (
+                            <input
+                              type="text"
+                              value={obsValue}
+                              onChange={(e) => setObsValue(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && handleSaveObs(record.id)}
+                              onBlur={() => setEditingObs(null)}
+                              className="bg-slate-700 text-white px-2 py-1 rounded text-sm w-full focus:outline-none"
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              onClick={() => { setEditingObs(record.id); setObsValue(record.observaciones || ''); }}
+                              className="cursor-pointer hover:text-blue-400 transition-colors"
+                            >
+                              {record.observaciones || 'Agregar...'}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -437,49 +483,24 @@ export function AdminView() {
           </div>
         )}
 
-        {/* Stats */}
-        {viewMode === 'realtime' ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="text-slate-400 text-sm mb-1">Total Registros</p>
-              <p className="text-3xl font-bold text-white">{records.length}</p>
-            </div>
-            <div className="bg-green-600/10 rounded-xl p-4 border border-green-600/30">
-              <p className="text-green-400 text-sm mb-1">Entradas</p>
-              <p className="text-3xl font-bold text-green-400">
-                {records.filter(r => r.tipo === RECORD_TYPES.ENTRADA).length}
-              </p>
-            </div>
-            <div className="bg-red-600/10 rounded-xl p-4 border border-red-600/30">
-              <p className="text-red-400 text-sm mb-1">Salidas</p>
-              <p className="text-3xl font-bold text-red-400">
-                {records.filter(r => r.tipo === RECORD_TYPES.SALIDA).length}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <p className="text-slate-400 text-sm mb-1">Total Pares</p>
-              <p className="text-3xl font-bold text-white">{allPairs.length}</p>
-            </div>
-            <div className="bg-blue-600/10 rounded-xl p-4 border border-blue-600/30">
-              <p className="text-blue-400 text-sm mb-1">Pares Completos</p>
-              <p className="text-3xl font-bold text-blue-400">
-                {allPairs.filter(p => p.entrada && p.salida).length}
-              </p>
-            </div>
-            <div className="bg-yellow-600/10 rounded-xl p-4 border border-yellow-600/30">
-              <p className="text-yellow-400 text-sm mb-1">Pares Incompletos</p>
-              <p className="text-3xl font-bold text-yellow-400">
-                {allPairs.filter(p => !p.entrada || !p.salida).length}
-              </p>
-            </div>
-          </div>
+        {/* Modales gestión de usuarios */}
+        <AddUserModal
+          isOpen={showAddUser}
+          onClose={() => setShowAddUser(false)}
+          onSuccess={loadRecords}
+        />
+        <UsersListModal
+          isOpen={showUsersList}
+          onClose={() => setShowUsersList(false)}
+        />
+        {selectedUser && (
+          <ChangePasswordModal
+            isOpen={showChangePassword}
+            onClose={() => { setShowChangePassword(false); setSelectedUser(null); }}
+            userId={selectedUser.id}
+            userName={selectedUser.name}
+          />
         )}
-          </>
-        )}
-
       </div>
     </div>
   );

@@ -72,11 +72,80 @@ export const getEmployeePairs = async (employeeId) => {
       i++;
     }
 
+  pairs.reverse();
+  const limitedPairs = pairs.slice(0, 10);
+
+  return { success: true, pairs: limitedPairs };
+
+  } catch (error) {
+    return { success: false, error: 'Error procesando parejas', pairs: [] };
+  }
+};
+
+export const getAllEmployeePairs = async (employeeId) => {
+  try {
+    const { data: records, error } = await supabase
+      .from('time_records')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .is('deleted_at', null)
+      .order('timestamp', { ascending: true });
+
+    if (error) throw error;
+    if (!records || records.length === 0) return { success: true, pairs: [] };
+
+    const recordsCamel = snakeToCamel(records);
+    const pairs = [];
+    let i = 0;
+
+    while (i < recordsCamel.length) {
+      const current = recordsCamel[i];
+
+      if (current.tipo === RECORD_TYPES.ENTRADA) {
+        let nextSalida = null;
+
+        for (let j = i + 1; j < recordsCamel.length; j++) {
+          if (recordsCamel[j].tipo === RECORD_TYPES.SALIDA) {
+            nextSalida = recordsCamel[j];
+            i = j;
+            break;
+          }
+        }
+
+        const pair = {
+          fecha: current.fecha,
+          dia: current.dia,
+          entrada: { id: current.id, hora: current.hora, timestamp: current.timestamp },
+          salida: nextSalida
+            ? { id: nextSalida.id, hora: nextSalida.hora, timestamp: nextSalida.timestamp }
+            : null,
+          observaciones: current.observaciones || '',
+          tiempo_almuerzo: current.tiempoAlmuerzo || '02:00',
+          tiempo_almuerzo_editado: current.tiempoAlmuerzoEditado || false,
+          licencia_remunerada: current.licenciaRemunerada || false,
+        };
+
+        if (pair.salida) {
+          const calc = calcularHorasTrabajadas(
+            pair.entrada.hora,
+            pair.salida.hora,
+            pair.tiempo_almuerzo
+          );
+          pair.total_horas = calc.total_horas;
+          pair.total_horas_decimal = calc.total_horas_decimal;
+        } else {
+          pair.total_horas = null;
+          pair.total_horas_decimal = null;
+        }
+
+        pairs.push(pair);
+      }
+
+      i++;
+    }
+
     pairs.reverse();
-    const limitedPairs = pairs.slice(0, 10);
-
-    return { success: true, pairs: limitedPairs };
-
+    return { success: true, pairs };
   } catch (error) {
     return { success: false, error: 'Error procesando parejas', pairs: [] };
   }
