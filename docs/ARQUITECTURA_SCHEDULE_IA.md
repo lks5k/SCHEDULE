@@ -234,3 +234,112 @@ Codigo aceptable si:
 ULTIMA ACTUALIZACION: 06 Feb 2026
 VERSION: 4.0
 STATUS: PRODUCCION
+
+ACTUALIZACION ARQUITECTURA - FIX 5
+
+AGREGAR A @ARQUITECTURA_SCHEDULE_IA.md
+
+SECCION: ESTRUCTURA BASE DATOS
+
+time_records:
+- id (PK)
+- employee_id (FK)
+- employee_name
+- fecha
+- dia
+- tipo (ENTRADA/SALIDA)
+- hora
+- timestamp
+- tiempo_almuerzo
+- tiempo_almuerzo_editado
+- observacion_1 (NUEVO FIX 5)
+- observacion_1_editado (NUEVO FIX 5)
+- observacion_2 (NUEVO FIX 5)
+- observacion_2_editado (NUEVO FIX 5)
+- observacion_3 (NUEVO FIX 5)
+- observacion_3_editado (NUEVO FIX 5)
+- licencia_remunerada
+- created_at
+- deleted_at
+
+employees:
+- id (PK)
+- name
+- cedula (UNIQUE)
+- password
+- role (employee/admin/master)
+- blocked (NUEVO FIX 5)
+- created_at
+- deleted_at
+
+SECCION: COMPONENTES ADMIN
+
+AdminView.jsx:
+- Vista Parejas (todos registros, filtros interactivos, observaciones 3 col)
+- Vista Tiempo Real (todos registros, filtros, sin observaciones)
+- Vista Configuracion (timeouts, gestion usuarios)
+
+Modals:
+- AddUserModal (validaciones, generador password)
+- UsersListModal (bloquear, cambiar password)
+- ChangePasswordModal (generador password)
+- ConfigView (timeouts)
+
+SECCION: REGLAS NEGOCIO NUEVAS
+
+Observaciones (FIX 5):
+- 3 campos independientes por ENTRADA
+- Editable una sola vez
+- Se bloquea al guardar
+- Solo visible Vista Parejas
+- NO en Tiempo Real
+
+Validaciones Usuario (FIX 5):
+- Cedula: 7-10 digitos numericos
+- Nombre: solo letras y espacios
+- Password: min 6 caracteres
+- Generador: 10 caracteres aleatorios
+
+Bloqueo Usuario (FIX 5):
+- Campo blocked en DB
+- Validacion en login
+- Toggle en gestion usuarios
+- Actualiza reactivo
+
+SECCION: FLUJOS ADMIN
+
+Agregar Usuario:
+1. Click Agregar Usuario
+2. Modal abre
+3. Completar campos (validaciones)
+4. Opcional: Generar password
+5. Submit
+6. Verificar cedula unica
+7. Insert DB
+8. Actualizar lista
+
+Bloquear Usuario:
+1. Gestion Usuarios
+2. Lista usuarios
+3. Click Bloquear
+4. Update blocked=true
+5. Usuario no puede login
+
+Cambiar Password:
+1. Gestion Usuarios
+2. Click Cambiar Pass usuario
+3. Modal abre
+4. Opcional: Generar password
+5. Confirmar password
+6. Update DB
+7. Usuario login con nueva
+
+Editar Observacion:
+1. Vista Parejas
+2. Click columna Obs 1/2/3
+3. Input abre
+4. Escribir texto
+5. Enter guarda
+6. Update DB + flag editado
+7. Campo bloquea
+8. Actualiza todas vistas sin refresh
