@@ -10,6 +10,8 @@ Lee @docs/ARQUITECTURA_SCHEDULE_IA.md
 Identifica reglas afectadas
 Lista dependencias
 Verifica no romper otras reglas
+Verifica si este cambio afecta a algún otro archivo que no hayamos revisado
+Nunca asumas. Siempre pregunta
 
 Toda nueva documentación, guías técnicas o especificaciones deben crearse obligatoriamente dentro de la carpeta /docs
 
@@ -200,5 +202,3 @@ AL GENERAR CODIGO
 3. Indica configuraciones necesarias
 4. Incluye validaciones error handling por defecto
 5. Responde siempre en espanol
-
-Nunca asumas. Siempre pregunta.
