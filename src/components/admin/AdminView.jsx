@@ -14,6 +14,7 @@ import { getAllRecordsRealtime, subscribeToRecords } from '@/services/attendance
 import { getEmployeePairs, updateTiempoAlmuerzo } from '@/services/attendance/pairs.service';
 import { supabase } from '@/config/supabase.config';
 import { RECORD_TYPES } from '@/utils/constants.util';
+import { logger } from '@/utils/logger.util';
 
 export function AdminView() {
   const { currentUser, handleLogout } = useAuth();
@@ -105,7 +106,7 @@ export function AdminView() {
 
       setAllPairs(allPairsData);
     } catch (error) {
-      console.error('Error cargando parejas:', error);
+      logger.error('Error cargando parejas:', error);
     }
   };
 

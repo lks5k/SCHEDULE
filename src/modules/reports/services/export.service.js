@@ -6,10 +6,12 @@
  */
 
 import { getAllTimeRecords, getRecordsByDateRange } from '../../schedule/services/timeRecords.service.js';
-import { calculateHoursBetweenRecords, compareRecordsByTime } from '../../../utils/dateTime.util.js';
+import { compareRecordsByTime } from '../../../utils/dateTime.util.js';
+import { calcularHorasTrabajadas } from '../../../services/attendance/pairs.service.js';
 import { validateDateRange } from '../../../utils/validation.util.js';
 import { EXPORT_TYPES, LOG_ACTIONS } from '../../../utils/constants.util.js';
 import { logActivity } from '../../schedule/services/activityLog.service.js';
+import { logger } from '../../../utils/logger.util.js';
 
 /**
  * REQUISITO 9: Exporta registros a Excel según opciones
@@ -97,7 +99,7 @@ export const exportToExcel = async (options, currentUser) => {
     };
 
   } catch (error) {
-    console.error('Error exportando a Excel:', error);
+    logger.error('Error exportando a Excel:', error);
     return {
       success: false,
       error: 'Error al preparar la exportación'
@@ -138,9 +140,10 @@ export const prepareExportData = (records) => {
         const entrada = dayRecords[i]?.tipo === 'ENTRADA' ? dayRecords[i] : null;
         const salida = dayRecords[i + 1]?.tipo === 'SALIDA' ? dayRecords[i + 1] : null;
 
-        const hours = (entrada && salida) 
-          ? calculateHoursBetweenRecords(entrada, salida) 
-          : '00:00:00';
+        const calc = (entrada && salida)
+          ? calcularHorasTrabajadas(entrada.hora || '', salida.hora || '', '02:00')
+          : null;
+        const hours = calc ? (calc.total_horas + ':00') : '00:00:00';
 
         // Formato para Excel
         data.push({
@@ -159,7 +162,7 @@ export const prepareExportData = (records) => {
     return data;
 
   } catch (error) {
-    console.error('Error preparando datos:', error);
+    logger.error('Error preparando datos:', error);
     return [];
   }
 };
@@ -205,7 +208,7 @@ export const generateExportStats = (records) => {
     };
 
   } catch (error) {
-    console.error('Error generando estadísticas:', error);
+    logger.error('Error generando estadísticas:', error);
     return null;
   }
 };

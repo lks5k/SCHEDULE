@@ -1,5 +1,6 @@
 import { supabase } from '@/config/supabase.config';
 import { RECORD_TYPES } from '@/utils/constants.util';
+import { snakeToCamel } from '@/utils/caseConverter.util';
 
 export const getEmployeePairs = async (employeeId) => {
   try {
@@ -15,18 +16,19 @@ export const getEmployeePairs = async (employeeId) => {
       return { success: true, pairs: [] };
     }
 
+    const recordsCamel = snakeToCamel(records);
     const pairs = [];
     let i = 0;
 
-    while (i < records.length) {
-      const current = records[i];
+    while (i < recordsCamel.length) {
+      const current = recordsCamel[i];
 
       if (current.tipo === RECORD_TYPES.ENTRADA) {
         let nextSalida = null;
-        
-        for (let j = i + 1; j < records.length; j++) {
-          if (records[j].tipo === RECORD_TYPES.SALIDA) {
-            nextSalida = records[j];
+
+        for (let j = i + 1; j < recordsCamel.length; j++) {
+          if (recordsCamel[j].tipo === RECORD_TYPES.SALIDA) {
+            nextSalida = recordsCamel[j];
             i = j;
             break;
           }
@@ -46,9 +48,9 @@ export const getEmployeePairs = async (employeeId) => {
             timestamp: nextSalida.timestamp
           } : null,
           observaciones: current.observaciones || '',
-          tiempo_almuerzo: current.tiempo_almuerzo || '02:00',
-          tiempo_almuerzo_editado: current.tiempo_almuerzo_editado || false,
-          licencia_remunerada: current.licencia_remunerada || false
+          tiempo_almuerzo: current.tiempoAlmuerzo || '02:00',
+          tiempo_almuerzo_editado: current.tiempoAlmuerzoEditado || false,
+          licencia_remunerada: current.licenciaRemunerada || false
         };
 
         if (pair.salida) {
@@ -80,14 +82,16 @@ export const getEmployeePairs = async (employeeId) => {
   }
 };
 
+const parseTime = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return 0;
+  const parts = timeStr.trim().split(':');
+  const hours = parseInt(parts[0], 10) || 0;
+  const minutes = parseInt(parts[1], 10) || 0;
+  return hours * 60 + minutes;
+};
+
 const calcularHorasTrabajadas = (horaEntrada, horaSalida, tiempoAlmuerzo = '02:00') => {
   try {
-    const parseTime = (timeStr) => {
-      const parts = timeStr.split(':');
-      const hours = parseInt(parts[0], 10) || 0;
-      const minutes = parseInt(parts[1], 10) || 0;
-      return hours * 60 + minutes;
-    };
 
     const entradaMin = parseTime(horaEntrada);
     const salidaMin = parseTime(horaSalida);

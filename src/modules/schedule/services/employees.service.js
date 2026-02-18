@@ -10,46 +10,38 @@ import { validateEmployeeData, validateCedula } from '../../../utils/validation.
 import { getEmployees, saveEmployees } from '../../../utils/localStorage.util.js';
 import { LOG_ACTIONS } from '../../../utils/constants.util.js';
 import { logActivity } from './activityLog.service.js';
+import { withSupabaseQuery } from '../../../utils/supabaseWrapper.util.js';
+import { logger } from '../../../utils/logger.util.js';
 
 /**
  * Obtiene todos los empleados activos
  * @returns {Object} { success, data, error? }
  */
 export const getAllEmployees = async () => {
-  try {
-    // Intentar desde Supabase primero
-    const { data, error } = await supabase
+  const result = await withSupabaseQuery(
+    () => supabase
       .from('employees')
       .select('*')
       .is('deleted_at', null)
-      .order('name', { ascending: true });
+      .order('name', { ascending: true }),
+    []
+  );
 
-    if (error) {
-      console.warn('Error consultando Supabase, usando localStorage:', error.message);
-      return {
-        success: true,
-        data: getEmployees(),
-        source: 'localStorage'
-      };
-    }
-
-    // Sincronizar con localStorage
-    saveEmployees(data || []);
-
-    return {
-      success: true,
-      data: data || [],
-      source: 'supabase'
-    };
-
-  } catch (error) {
-    console.error('Error obteniendo empleados:', error);
+  if (!result.success) {
     return {
       success: true,
       data: getEmployees(),
       source: 'localStorage'
     };
   }
+
+  const data = result.data || [];
+  saveEmployees(data);
+  return {
+    success: true,
+    data,
+    source: 'supabase'
+  };
 };
 
 /**
@@ -67,7 +59,7 @@ export const getEmployeeById = async (id) => {
       .single();
 
     if (error) {
-      console.warn('Buscando en localStorage');
+      logger.warn('Buscando en localStorage');
       const employees = getEmployees();
       const employee = employees.find(e => e.id === id);
 
@@ -81,7 +73,7 @@ export const getEmployeeById = async (id) => {
     return { success: true, data };
 
   } catch (error) {
-    console.error('Error obteniendo empleado:', error);
+    logger.error('Error obteniendo empleado:', error);
     return { success: false, error: error.message };
   }
 };
@@ -106,7 +98,7 @@ export const getEmployeeByCedula = async (cedula) => {
       .single();
 
     if (error) {
-      console.warn('Buscando en localStorage');
+      logger.warn('Buscando en localStorage');
       const employees = getEmployees();
       const employee = employees.find(e => e.cedula === cedula.trim());
 
@@ -120,7 +112,7 @@ export const getEmployeeByCedula = async (cedula) => {
     return { success: true, data };
 
   } catch (error) {
-    console.error('Error obteniendo empleado por cédula:', error);
+    logger.error('Error obteniendo empleado por cédula:', error);
     return { success: false, error: error.message };
   }
 };
@@ -165,7 +157,7 @@ export const createEmployee = async (employeeData, currentUser) => {
       if (error) throw error;
       savedEmployee = data;
     } catch (supabaseError) {
-      console.warn('Error en Supabase, generando ID local:', supabaseError.message);
+      logger.warn('Error en Supabase, generando ID local:', supabaseError.message);
       savedEmployee = {
         ...newEmployee,
         id: Date.now() // ID temporal para localStorage
@@ -190,7 +182,7 @@ export const createEmployee = async (employeeData, currentUser) => {
     };
 
   } catch (error) {
-    console.error('Error creando empleado:', error);
+    logger.error('Error creando empleado:', error);
     return {
       success: false,
       error: 'Error al crear el empleado'
@@ -223,7 +215,7 @@ export const updateEmployee = async (id, updates, currentUser) => {
 
       if (error) throw error;
     } catch (supabaseError) {
-      console.warn('Error actualizando en Supabase:', supabaseError.message);
+      logger.warn('Error actualizando en Supabase:', supabaseError.message);
     }
 
     // Actualizar en localStorage
@@ -246,7 +238,7 @@ export const updateEmployee = async (id, updates, currentUser) => {
     return { success: false, error: 'Empleado no encontrado' };
 
   } catch (error) {
-    console.error('Error actualizando empleado:', error);
+    logger.error('Error actualizando empleado:', error);
     return { success: false, error: error.message };
   }
 };
@@ -270,7 +262,7 @@ export const deleteEmployee = async (id, currentUser) => {
 
       if (error) throw error;
     } catch (supabaseError) {
-      console.warn('Error en Supabase:', supabaseError.message);
+      logger.warn('Error en Supabase:', supabaseError.message);
     }
 
     // Remover de localStorage (hard delete local)
@@ -290,7 +282,7 @@ export const deleteEmployee = async (id, currentUser) => {
     return { success: true };
 
   } catch (error) {
-    console.error('Error eliminando empleado:', error);
+    logger.error('Error eliminando empleado:', error);
     return { success: false, error: error.message };
   }
 };
@@ -313,7 +305,7 @@ export const blockEmployee = async (id, blocked, currentUser) => {
 
       if (error) throw error;
     } catch (supabaseError) {
-      console.warn('Error en Supabase:', supabaseError.message);
+      logger.warn('Error en Supabase:', supabaseError.message);
     }
 
     // Actualizar en localStorage
@@ -337,7 +329,7 @@ export const blockEmployee = async (id, blocked, currentUser) => {
     return { success: false, error: 'Empleado no encontrado' };
 
   } catch (error) {
-    console.error('Error bloqueando/desbloqueando empleado:', error);
+    logger.error('Error bloqueando/desbloqueando empleado:', error);
     return { success: false, error: error.message };
   }
 };

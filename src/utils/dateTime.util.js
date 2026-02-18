@@ -148,21 +148,6 @@ export const formatDurationMs = (ms) => {
 };
 
 /**
- * Calcula las horas trabajadas entre dos registros
- * @param {Object} entrada - Registro de entrada
- * @param {Object} salida - Registro de salida
- * @returns {string} Horas en formato HH:MM:SS
- */
-export const calculateHoursBetweenRecords = (entrada, salida) => {
-  const t1 = getRecordTimeMs(entrada);
-  const t2 = getRecordTimeMs(salida);
-
-  if (Number.isNaN(t1) || Number.isNaN(t2)) return '00:00:00';
-
-  return formatDurationMs(t2 - t1);
-};
-
-/**
  * Obtiene la fecha actual en formato colombiano DD/MM/YYYY
  * @returns {string}
  */

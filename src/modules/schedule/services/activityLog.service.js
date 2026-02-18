@@ -7,6 +7,8 @@
 
 import { supabase } from '../../../config/supabase.config.js';
 import { getActivityLog, saveActivityLog } from '../../../utils/localStorage.util.js';
+import { logger } from '../../../utils/logger.util.js';
+import { withSupabaseQuery } from '../../../utils/supabaseWrapper.util.js';
 
 /**
  * Registra una actividad en el log
@@ -33,7 +35,7 @@ export const logActivity = async (action, details, userName = 'Sistema') => {
 
       if (error) throw error;
     } catch (supabaseError) {
-      console.warn('Error guardando en Supabase:', supabaseError.message);
+      logger.warn('Error guardando en Supabase:', supabaseError.message);
     }
 
     // Guardar en localStorage
@@ -52,7 +54,7 @@ export const logActivity = async (action, details, userName = 'Sistema') => {
     return { success: true };
 
   } catch (error) {
-    console.error('Error registrando actividad:', error);
+    logger.error('Error registrando actividad:', error);
     return { success: false, error: error.message };
   }
 };
@@ -63,35 +65,16 @@ export const logActivity = async (action, details, userName = 'Sistema') => {
  * @returns {Object} { success, data, error? }
  */
 export const getActivityLogData = async (limit = 100) => {
-  try {
-    // Intentar desde Supabase
-    const { data, error } = await supabase
+  const result = await withSupabaseQuery(
+    () => supabase
       .from('activity_log')
       .select('*')
       .order('timestamp', { ascending: false })
-      .limit(limit);
+      .limit(limit),
+    []
+  );
 
-    if (error) {
-      console.warn('Error consultando Supabase, usando localStorage:', error.message);
-      const localLog = getActivityLog();
-      return {
-        success: true,
-        data: localLog.slice(0, limit),
-        source: 'localStorage'
-      };
-    }
-
-    // Sincronizar con localStorage
-    saveActivityLog(data || []);
-
-    return {
-      success: true,
-      data: data || [],
-      source: 'supabase'
-    };
-
-  } catch (error) {
-    console.error('Error obteniendo log de actividad:', error);
+  if (!result.success) {
     const localLog = getActivityLog();
     return {
       success: true,
@@ -99,6 +82,14 @@ export const getActivityLogData = async (limit = 100) => {
       source: 'localStorage'
     };
   }
+
+  const data = result.data || [];
+  saveActivityLog(data);
+  return {
+    success: true,
+    data,
+    source: 'supabase'
+  };
 };
 
 /**
@@ -117,7 +108,7 @@ export const getActivityByUser = async (userName, limit = 100) => {
       .limit(limit);
 
     if (error) {
-      console.warn('Usando localStorage');
+      logger.warn('Usando localStorage');
       const localLog = getActivityLog()
         .filter(a => a.user === userName || a.user_name === userName);
 
@@ -130,7 +121,7 @@ export const getActivityByUser = async (userName, limit = 100) => {
     return { success: true, data: data || [] };
 
   } catch (error) {
-    console.error('Error obteniendo actividad por usuario:', error);
+    logger.error('Error obteniendo actividad por usuario:', error);
     return { success: false, error: error.message };
   }
 };
@@ -151,7 +142,7 @@ export const getActivityByDateRange = async (startDate, endDate) => {
       .order('timestamp', { ascending: false });
 
     if (error) {
-      console.warn('Usando localStorage');
+      logger.warn('Usando localStorage');
       const localLog = getActivityLog()
         .filter(a => {
           const activityDate = new Date(a.timestamp);
@@ -164,7 +155,7 @@ export const getActivityByDateRange = async (startDate, endDate) => {
     return { success: true, data: data || [] };
 
   } catch (error) {
-    console.error('Error obteniendo actividad por rango:', error);
+    logger.error('Error obteniendo actividad por rango:', error);
     return { success: false, error: error.message };
   }
 };
@@ -189,7 +180,7 @@ export const cleanOldLogs = async (days = 90) => {
 
       if (error) throw error;
     } catch (supabaseError) {
-      console.warn('Error limpiando en Supabase:', supabaseError.message);
+      logger.warn('Error limpiando en Supabase:', supabaseError.message);
     }
 
     // Limpiar de localStorage
@@ -198,7 +189,7 @@ export const cleanOldLogs = async (days = 90) => {
     const deletedCount = log.length - filtered.length;
     saveActivityLog(filtered);
 
-    console.log(`✅ Se eliminaron ${deletedCount} registros antiguos del log`);
+    logger.info(`Se eliminaron ${deletedCount} registros antiguos del log`);
 
     return {
       success: true,
@@ -206,7 +197,7 @@ export const cleanOldLogs = async (days = 90) => {
     };
 
   } catch (error) {
-    console.error('Error limpiando logs antiguos:', error);
+    logger.error('Error limpiando logs antiguos:', error);
     return { success: false, error: error.message };
   }
 };

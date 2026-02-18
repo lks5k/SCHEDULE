@@ -6,13 +6,14 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '../utils/logger.util.js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ Variables de entorno de Supabase no configuradas');
-  console.error('Verifica que el archivo .env tenga VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY');
+  logger.error('Variables de entorno de Supabase no configuradas');
+  logger.error('Verifica que el archivo .env tenga VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY');
   throw new Error('Faltan las variables VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY');
 }
 
@@ -28,10 +29,10 @@ export const testConnection = async () => {
       .limit(1);
     
     if (error) throw error;
-    console.log('✅ Conexión a Supabase establecida correctamente');
+    logger.info('Conexión a Supabase establecida correctamente');
     return { success: true };
   } catch (error) {
-    console.error('❌ Error al conectar con Supabase:', error.message);
+    logger.error('Error al conectar con Supabase:', error.message);
     return { success: false, error: error.message };
   }
 };

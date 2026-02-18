@@ -8,6 +8,7 @@
 import { supabase } from '../../../config/supabase.config.js';
 import { LOG_ACTIONS, MESSAGES } from '../../../utils/constants.util.js';
 import { logActivity } from '../../schedule/services/activityLog.service.js';
+import { logger } from '../../../utils/logger.util.js';
 
 /**
  * Realiza el login de un usuario
@@ -101,7 +102,7 @@ export const login = async (cedula, password) => {
     };
 
   } catch (error) {
-    console.error('Error en login:', error);
+    logger.error('Error en login:', error);
     return {
       success: false,
       error: 'Error al conectar con el servidor. Intente nuevamente.'
@@ -122,7 +123,7 @@ export const logout = async (user) => {
 
     return { success: true };
   } catch (error) {
-    console.error('Error en logout:', error);
+    logger.error('Error en logout:', error);
     return { success: false, error: error.message };
   }
 };
@@ -178,7 +179,7 @@ export const checkLastRecord = async (employeeId) => {
     };
 
   } catch (error) {
-    console.error('Error verificando último registro:', error);
+    logger.error('Error verificando último registro:', error);
     return {
       success: false,
       error: 'Error verificando último registro'
@@ -203,7 +204,7 @@ export const autoLogout = async (user) => {
 
     return { success: true };
   } catch (error) {
-    console.error('Error en auto-logout:', error);
+    logger.error('Error en auto-logout:', error);
     return { success: false, error: error.message };
   }
 };

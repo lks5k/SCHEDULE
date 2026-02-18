@@ -13,6 +13,7 @@ import { checkLastRecord } from '@/modules/auth/services/auth.service';
 import { recordAttendance } from '@/services/attendance/attendance.service';
 import { getEmployeePairs, updateTiempoAlmuerzo } from '@/services/attendance/pairs.service';
 import { RECORD_TYPES } from '@/utils/constants.util';
+import { logger } from '@/utils/logger.util';
 
 export function EmployeeView() {
   const { currentUser, handleLogout } = useAuth();
@@ -89,7 +90,7 @@ export function EmployeeView() {
       }
 
     } catch (error) {
-      console.error('Error marcando asistencia:', error);
+      logger.error('Error marcando asistencia:', error);
       setToastMessage('Error al procesar marcación');
       setToastType('error');
       setShowToast(true);

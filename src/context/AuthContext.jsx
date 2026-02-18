@@ -7,6 +7,7 @@
 
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { login, logout, autoLogout } from '@/modules/auth/services/auth.service';
+import { logger } from '@/utils/logger.util';
 
 const AuthContext = createContext(null);
 
@@ -113,7 +114,7 @@ export function AuthProvider({ children }) {
       setLoading(false);
       return result;
     } catch (err) {
-      console.error('Error en handleLogin:', err);
+      logger.error('Error en handleLogin:', err);
       const errorMsg = 'Error al procesar el login';
       setError(errorMsg);
       setLoading(false);
@@ -130,7 +131,7 @@ export function AuthProvider({ children }) {
       setIsAuthenticated(false);
       sessionStorage.removeItem('currentUser');
     } catch (err) {
-      console.error('Error en logout:', err);
+      logger.error('Error en logout:', err);
     }
   };
 

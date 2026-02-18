@@ -95,14 +95,17 @@ export const recordAttendance = async (employee, tipo) => {
     // 4. Obtener fecha/hora actual de Colombia
     const dateTime = getCurrentDateTimeColombia();
 
-    // 5. Preparar datos para insertar
+    // 5. Preparar datos para insertar (hora consistente HH:MM:SS)
+    const horaNormalizada = dateTime.hora.includes(':') && dateTime.hora.split(':').length === 2
+      ? dateTime.hora + ':00'
+      : dateTime.hora;
     const recordData = {
       employee_id: employee.id,
       employee_name: employee.name,
       fecha: dateTime.fecha,      // "DD/MM/YYYY"
       dia: dateTime.dia,          // "lunes", "martes", etc.
       tipo: tipo,                 // "ENTRADA" o "SALIDA"
-      hora: dateTime.hora,        // "HH:MM:SS"
+      hora: horaNormalizada,      // "HH:MM:SS"
       timestamp: new Date().toISOString(),
       tiempo_almuerzo: tipo === RECORD_TYPES.ENTRADA ? '02:00' : null,
       tiempo_almuerzo_editado: false,

@@ -11,53 +11,40 @@ import { getTimeRecords, saveTimeRecords } from '../../../utils/localStorage.uti
 import { compareRecordsByTime } from '../../../utils/dateTime.util.js';
 import { LOG_ACTIONS } from '../../../utils/constants.util.js';
 import { logActivity } from './activityLog.service.js';
+import { logger } from '../../../utils/logger.util.js';
+import { withSupabaseQuery } from '../../../utils/supabaseWrapper.util.js';
 
 /**
  * REQUISITO 3: Obtiene todos los registros ordenados por timestamp DESC
  * @returns {Object} { success, data, error? }
  */
 export const getAllTimeRecords = async () => {
-  try {
-    // Intentar desde Supabase
-    const { data, error } = await supabase
+  const result = await withSupabaseQuery(
+    () => supabase
       .from('time_records')
       .select('*')
       .is('deleted_at', null)
-      .order('timestamp', { ascending: false });
+      .order('timestamp', { ascending: false }),
+    []
+  );
 
-    if (error) {
-      console.warn('Error consultando Supabase, usando localStorage:', error.message);
-      const localRecords = getTimeRecords();
-      // Ordenar DESC localmente
-      localRecords.sort((a, b) => compareRecordsByTime(b, a));
-
-      return {
-        success: true,
-        data: localRecords,
-        source: 'localStorage'
-      };
-    }
-
-    // Sincronizar con localStorage
-    saveTimeRecords(data || []);
-
-    return {
-      success: true,
-      data: data || [],
-      source: 'supabase'
-    };
-
-  } catch (error) {
-    console.error('Error obteniendo registros:', error);
+  if (!result.success) {
     const localRecords = getTimeRecords();
     localRecords.sort((a, b) => compareRecordsByTime(b, a));
-
     return {
       success: true,
       data: localRecords,
       source: 'localStorage'
     };
   }
+
+  const data = result.data || [];
+  saveTimeRecords(data);
+  return {
+    success: true,
+    data,
+    source: 'supabase'
+  };
 };
 
 /**
@@ -82,7 +69,7 @@ export const getRecordsByEmployeeId = async (employeeId, limit = null) => {
     const { data, error } = await query;
 
     if (error) {
-      console.warn('Usando localStorage');
+      logger.warn('Usando localStorage');
       const localRecords = getTimeRecords()
         .filter(r => r.employeeId === employeeId)
         .sort((a, b) => compareRecordsByTime(b, a));
@@ -96,7 +83,7 @@ export const getRecordsByEmployeeId = async (employeeId, limit = null) => {
     return { success: true, data: data || [] };
 
   } catch (error) {
-    console.error('Error obteniendo registros del empleado:', error);
+    logger.error('Error obteniendo registros del empleado:', error);
     return { success: false, error: error.message };
   }
 };
@@ -118,7 +105,7 @@ export const getRecordsByDateRange = async (startDate, endDate) => {
       .order('timestamp', { ascending: false });
 
     if (error) {
-      console.warn('Usando localStorage');
+      logger.warn('Usando localStorage');
       const localRecords = getTimeRecords()
         .filter(r => {
           const recordDate = new Date(r.timestamp);
@@ -132,7 +119,7 @@ export const getRecordsByDateRange = async (startDate, endDate) => {
     return { success: true, data: data || [] };
 
   } catch (error) {
-    console.error('Error obteniendo registros por rango:', error);
+    logger.error('Error obteniendo registros por rango:', error);
     return { success: false, error: error.message };
   }
 };
@@ -161,7 +148,7 @@ export const getLastRecordByEmployee = async (employeeId) => {
         return { success: true, data: null };
       }
 
-      console.warn('Usando localStorage');
+      logger.warn('Usando localStorage');
       const localRecords = getTimeRecords()
         .filter(r => r.employeeId === employeeId)
         .sort((a, b) => compareRecordsByTime(b, a));
@@ -175,7 +162,7 @@ export const getLastRecordByEmployee = async (employeeId) => {
     return { success: true, data };
 
   } catch (error) {
-    console.error('Error obteniendo último registro:', error);
+    logger.error('Error obteniendo último registro:', error);
     return { success: false, error: error.message };
   }
 };
@@ -224,7 +211,7 @@ export const createTimeRecord = async (recordData, currentUser = null) => {
       if (error) throw error;
       savedRecord = data;
     } catch (supabaseError) {
-      console.warn('Error en Supabase, generando ID local:', supabaseError.message);
+      logger.warn('Error en Supabase, generando ID local:', supabaseError.message);
       savedRecord = {
         ...newRecord,
         id: Date.now()
@@ -253,7 +240,7 @@ export const createTimeRecord = async (recordData, currentUser = null) => {
     };
 
   } catch (error) {
-    console.error('Error creando registro:', error);
+    logger.error('Error creando registro:', error);
     return {
       success: false,
       error: 'Error al crear el registro'
@@ -311,7 +298,7 @@ export const updateTimeRecord = async (id, updates, reason, currentUser) => {
 
       if (error) throw error;
     } catch (supabaseError) {
-      console.warn('Error actualizando en Supabase:', supabaseError.message);
+      logger.warn('Error actualizando en Supabase:', supabaseError.message);
     }
 
     // Actualizar en localStorage
@@ -337,7 +324,7 @@ export const updateTimeRecord = async (id, updates, reason, currentUser) => {
     return { success: false, error: 'Registro no encontrado' };
 
   } catch (error) {
-    console.error('Error actualizando registro:', error);
+    logger.error('Error actualizando registro:', error);
     return { success: false, error: error.message };
   }
 };
@@ -361,7 +348,7 @@ export const deleteTimeRecord = async (id, currentUser) => {
 
       if (error) throw error;
     } catch (supabaseError) {
-      console.warn('Error en Supabase:', supabaseError.message);
+      logger.warn('Error en Supabase:', supabaseError.message);
     }
 
     // Remover de localStorage
@@ -372,7 +359,7 @@ export const deleteTimeRecord = async (id, currentUser) => {
     return { success: true };
 
   } catch (error) {
-    console.error('Error eliminando registro:', error);
+    logger.error('Error eliminando registro:', error);
     return { success: false, error: error.message };
   }
 };
@@ -395,7 +382,7 @@ export const addObservation = async (recordId, observation, currentUser) => {
 
       if (error) throw error;
     } catch (supabaseError) {
-      console.warn('Error en Supabase:', supabaseError.message);
+      logger.warn('Error en Supabase:', supabaseError.message);
     }
 
     // Actualizar en localStorage
@@ -418,7 +405,7 @@ export const addObservation = async (recordId, observation, currentUser) => {
     return { success: false, error: 'Registro no encontrado' };
 
   } catch (error) {
-    console.error('Error agregando observación:', error);
+    logger.error('Error agregando observación:', error);
     return { success: false, error: error.message };
   }
 };

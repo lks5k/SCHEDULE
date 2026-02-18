@@ -6,6 +6,7 @@
  */
 
 import { LOCAL_STORAGE_KEYS } from './constants.util.js';
+import { logger } from './logger.util.js';
 
 /**
  * Guarda datos en localStorage de forma segura
@@ -18,7 +19,7 @@ const saveToLocalStorage = (key, data) => {
     localStorage.setItem(key, JSON.stringify(data));
     return true;
   } catch (error) {
-    console.error(`Error guardando en localStorage (${key}):`, error);
+    logger.error(`Error guardando en localStorage (${key}):`, error);
     return false;
   }
 };
@@ -34,7 +35,7 @@ const getFromLocalStorage = (key, defaultValue = null) => {
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
   } catch (error) {
-    console.error(`Error leyendo de localStorage (${key}):`, error);
+    logger.error(`Error leyendo de localStorage (${key}):`, error);
     return defaultValue;
   }
 };
@@ -132,7 +133,7 @@ export const saveSystemPasswords = (passwords) => {
     }
     return true;
   } catch (error) {
-    console.error('Error guardando contraseñas del sistema:', error);
+    logger.error('Error guardando contraseñas del sistema:', error);
     return false;
   }
 };
@@ -150,10 +151,10 @@ export const clearAllData = () => {
     Object.values(LOCAL_STORAGE_KEYS).forEach(key => {
       localStorage.removeItem(key);
     });
-    console.log('✅ localStorage limpiado');
+    logger.info('localStorage limpiado');
     return true;
   } catch (error) {
-    console.error('Error limpiando localStorage:', error);
+    logger.error('Error limpiando localStorage:', error);
     return false;
   }
 };
