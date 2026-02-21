@@ -192,10 +192,7 @@ export const createTimeRecord = async (recordData, currentUser = null) => {
       dia: recordData.dia,
       tipo: recordData.tipo,
       hora: recordData.hora,
-      timestamp: recordData.timestamp || new Date().toISOString(),
-      observaciones: recordData.observaciones || '',
-      dispositivo: recordData.dispositivo || navigator?.platform || 'Unknown',
-      created_at: new Date().toISOString()
+      timestamp: recordData.timestamp || new Date().toISOString()
     };
 
     // Intentar guardar en Supabase

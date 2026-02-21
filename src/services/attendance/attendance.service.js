@@ -109,8 +109,7 @@ export const recordAttendance = async (employee, tipo) => {
       timestamp: new Date().toISOString(),
       tiempo_almuerzo: tipo === RECORD_TYPES.ENTRADA ? '02:00' : null,
       tiempo_almuerzo_editado: false,
-      licencia_remunerada: false,
-      observaciones: ''
+      licencia_remunerada: false
     };
 
     // 6. Insertar en Supabase
