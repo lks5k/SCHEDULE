@@ -7,6 +7,7 @@
 
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { login, logout, autoLogout } from '@/modules/auth/services/auth.service';
+import { midnightCleanup, blockLimitCheck } from '@/services/attendance/autoClosure.service';
 import { logger } from '@/utils/logger.util';
 
 const AuthContext = createContext(null);
@@ -94,6 +95,23 @@ export function AuthProvider({ children }) {
       });
     };
   }, [isAuthenticated, currentUser?.role, handleInactivityLogout]);
+
+  // Ejecuta los crons de auto-cierre cada hora mientras hay sesión activa.
+  // midnightCleanup cierra entradas >24h, blockLimitCheck cierra entradas >8h.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    midnightCleanup();
+    blockLimitCheck();
+
+    const midnightInterval = setInterval(midnightCleanup, 3_600_000);
+    const blockInterval = setInterval(blockLimitCheck, 3_600_000);
+
+    return () => {
+      clearInterval(midnightInterval);
+      clearInterval(blockInterval);
+    };
+  }, [isAuthenticated]);
 
   const handleLogin = async (cedula, password) => {
     setLoading(true);

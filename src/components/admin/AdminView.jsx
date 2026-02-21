@@ -32,6 +32,15 @@ export function AdminView() {
   // Filtros Vista Parejas
   const [filtroParejas, setFiltroParejas] = useState('todos');
 
+  // Filtros avanzados Tiempo Real
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
+  const [empleadoFiltro, setEmpleadoFiltro] = useState('');
+
+  // Ordenamiento Tiempo Real
+  const [sortField, setSortField] = useState('timestamp');
+  const [sortDirection, setSortDirection] = useState('desc');
+
   // Observaciones inline en Vista Parejas
   const [editingObs, setEditingObs] = useState(null);
   const [obsField, setObsField] = useState('');
@@ -52,13 +61,69 @@ export function AdminView() {
 
   const recordsFiltrados = useMemo(() => {
     const hoy = new Date().toISOString().split('T')[0];
+    let filtered = records;
+
     switch (filtro) {
-      case 'hoy':      return records.filter(r => r.timestamp?.startsWith(hoy));
-      case 'entradas': return records.filter(r => r.tipo === 'ENTRADA');
-      case 'salidas':  return records.filter(r => r.tipo === 'SALIDA');
-      default:         return records;
+      case 'hoy':      filtered = filtered.filter(r => r.timestamp?.startsWith(hoy)); break;
+      case 'entradas': filtered = filtered.filter(r => r.tipo === 'ENTRADA'); break;
+      case 'salidas':  filtered = filtered.filter(r => r.tipo === 'SALIDA'); break;
     }
-  }, [records, filtro]);
+
+    if (fechaInicio) {
+      filtered = filtered.filter(r => {
+        if (!r.fecha) return false;
+        const [d, m, y] = r.fecha.split('/');
+        return new Date(`${y}-${m}-${d}`) >= new Date(fechaInicio);
+      });
+    }
+
+    if (fechaFin) {
+      filtered = filtered.filter(r => {
+        if (!r.fecha) return false;
+        const [d, m, y] = r.fecha.split('/');
+        return new Date(`${y}-${m}-${d}`) <= new Date(fechaFin);
+      });
+    }
+
+    if (empleadoFiltro.trim()) {
+      const term = empleadoFiltro.toLowerCase();
+      filtered = filtered.filter(r => r.employee_name?.toLowerCase().includes(term));
+    }
+
+    return filtered;
+  }, [records, filtro, fechaInicio, fechaFin, empleadoFiltro]);
+
+  const handleSort = (field) => {
+    setSortField(prev => {
+      if (prev === field) {
+        setSortDirection(dir => (dir === 'asc' ? 'desc' : 'asc'));
+        return field;
+      }
+      setSortDirection('asc');
+      return field;
+    });
+  };
+
+  const recordsOrdenados = useMemo(() => {
+    return [...recordsFiltrados].sort((a, b) => {
+      let aVal = a[sortField] ?? '';
+      let bVal = b[sortField] ?? '';
+
+      if (sortField === 'fecha') {
+        const toDate = (str) => {
+          if (!str) return new Date(0);
+          const [d, m, y] = str.split('/');
+          return new Date(`${y}-${m}-${d}`);
+        };
+        aVal = toDate(a.fecha);
+        bVal = toDate(b.fecha);
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [recordsFiltrados, sortField, sortDirection]);
 
   const contadores = useMemo(() => ({
     total:    records.length,
@@ -451,8 +516,47 @@ export function AdminView() {
         ) : (
 
           /* ── VISTA TIEMPO REAL ─────────────────────────────────────── */
-          /* CAMBIO 10: Sin columna de Observaciones (solo en Vista Parejas) */
           <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+
+            {/* Filtros avanzados: fecha y empleado */}
+            <div className="flex flex-wrap gap-4 p-4 bg-slate-750 border-b border-slate-700">
+              <div>
+                <label className="block text-slate-400 text-xs mb-1 uppercase font-semibold">Desde</label>
+                <input
+                  type="date"
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.target.value)}
+                  className="bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-xs mb-1 uppercase font-semibold">Hasta</label>
+                <input
+                  type="date"
+                  value={fechaFin}
+                  onChange={(e) => setFechaFin(e.target.value)}
+                  className="bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 text-xs mb-1 uppercase font-semibold">Empleado</label>
+                <input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={empleadoFiltro}
+                  onChange={(e) => setEmpleadoFiltro(e.target.value)}
+                  className="bg-slate-700 text-white px-3 py-2 rounded border border-slate-600 text-sm"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => { setFechaInicio(''); setFechaFin(''); setEmpleadoFiltro(''); }}
+                  className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded text-sm transition"
+                >
+                  Limpiar
+                </button>
+              </div>
+            </div>
 
             {/* Barra de filtros con contadores */}
             <div className="flex justify-between items-center py-4 px-6 bg-slate-700 border-y border-slate-600">
@@ -498,29 +602,44 @@ export function AdminView() {
                   Salidas ({contadores.salidas})
                 </button>
               </div>
-              <div className="text-white font-semibold">Mostrando: {recordsFiltrados.length}</div>
+              <div className="text-white font-semibold">Mostrando: {recordsOrdenados.length}</div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Empleado</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Tipo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Fecha</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Hora</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-300">Día</th>
+                    <th
+                      onClick={() => handleSort('employee_name')}
+                      className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase cursor-pointer hover:bg-slate-600 select-none"
+                    >
+                      Empleado {sortField === 'employee_name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Tipo</th>
+                    <th
+                      onClick={() => handleSort('fecha')}
+                      className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase cursor-pointer hover:bg-slate-600 select-none"
+                    >
+                      Fecha {sortField === 'fecha' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th
+                      onClick={() => handleSort('hora')}
+                      className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase cursor-pointer hover:bg-slate-600 select-none"
+                    >
+                      Hora {sortField === 'hora' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Día</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700">
-                  {recordsFiltrados.length === 0 ? (
+                  {recordsOrdenados.length === 0 ? (
                     <tr>
                       <td colSpan="5" className="px-4 py-8 text-center text-slate-400">
                         No hay registros para mostrar
                       </td>
                     </tr>
                   ) : (
-                    recordsFiltrados.map((record) => (
+                    recordsOrdenados.map((record) => (
                       <tr key={record.id} className="hover:bg-slate-700/50 transition-colors">
                         <td className="px-4 py-3 text-white">{record.employee_name}</td>
                         <td className="px-4 py-3">
@@ -563,6 +682,7 @@ export function AdminView() {
         <UsersListModal
           isOpen={showUsersList}
           onClose={() => setShowUsersList(false)}
+          currentUser={currentUser}
         />
         {selectedUser && (
           <ChangePasswordModal

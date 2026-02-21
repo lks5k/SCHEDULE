@@ -3,7 +3,7 @@ import { supabase } from '@/config/supabase.config';
 import { Button, Toast } from '@/components/common';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
-export function UsersListModal({ isOpen, onClose }) {
+export function UsersListModal({ isOpen, onClose, currentUser }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -25,6 +25,22 @@ export function UsersListModal({ isOpen, onClose }) {
       .order('name');
     if (!error) setUsers(data || []);
     setLoading(false);
+  };
+
+  const handleRoleChange = async (userId, newRole) => {
+    const { error } = await supabase
+      .from('employees')
+      .update({ role: newRole })
+      .eq('id', userId);
+
+    if (!error) {
+      setToastMessage('Rol actualizado');
+      setShowToast(true);
+      await loadUsers();
+    } else {
+      setToastMessage('Error: ' + error.message);
+      setShowToast(true);
+    }
   };
 
   const toggleBlock = async (userId, currentBlocked) => {
@@ -81,7 +97,21 @@ export function UsersListModal({ isOpen, onClose }) {
                 <tr key={user.id} className="hover:bg-slate-700/50">
                   <td className="px-4 py-3 text-white">{user.name}</td>
                   <td className="px-4 py-3 text-slate-300">{user.cedula}</td>
-                  <td className="px-4 py-3 text-slate-300 capitalize">{user.role}</td>
+                  <td className="px-4 py-3">
+                    {currentUser?.role === 'master' ? (
+                      <select
+                        value={user.role}
+                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                        className="bg-slate-700 text-white px-2 py-1 rounded text-sm border border-slate-600 capitalize"
+                      >
+                        <option value="employee">Empleado</option>
+                        <option value="admin">Admin</option>
+                        <option value="master">Master</option>
+                      </select>
+                    ) : (
+                      <span className="text-slate-300 capitalize">{user.role}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {user.blocked
                       ? <span className="text-red-400 font-medium">Bloqueado</span>
