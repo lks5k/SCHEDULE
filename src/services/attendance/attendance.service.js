@@ -11,7 +11,6 @@
  * 4. Registrar en activity_log para auditoría
  */
 
-import { differenceInDays, parseISO } from 'date-fns';
 import { supabase } from '@/config/supabase.config';
 import { checkLastRecord } from '@/modules/auth/services/auth.service';
 import { RECORD_TYPES, LOG_ACTIONS } from '@/utils/constants.util';
@@ -62,34 +61,6 @@ export const recordAttendance = async (employee, tipo) => {
         error: `No puedes marcar ${tipo}. Debes marcar ${lastRecordCheck.nextAction}`,
         expectedAction: lastRecordCheck.nextAction
       };
-    }
-
-    // 3.1 NUEVA VALIDACIÓN: Si marca SALIDA, verificar días desde ENTRADA
-    if (tipo === RECORD_TYPES.SALIDA) {
-      const { data: lastEntrada } = await supabase
-        .from('time_records')
-        .select('fecha, timestamp')
-        .eq('employee_id', employee.id)
-        .eq('tipo', RECORD_TYPES.ENTRADA)
-        .is('deleted_at', null)
-        .order('timestamp', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (lastEntrada?.timestamp) {
-        const daysDiff = differenceInDays(
-          new Date(),
-          parseISO(lastEntrada.timestamp)
-        );
-
-        if (daysDiff > 1) {
-          return {
-            success: false,
-            error: `⚠️ Última ENTRADA fue hace ${daysDiff} días (${lastEntrada.fecha}). Por favor contacte administrador para corregir.`,
-            requiresAdmin: true
-          };
-        }
-      }
     }
 
     // 4. Obtener fecha/hora actual de Colombia

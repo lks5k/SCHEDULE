@@ -119,13 +119,12 @@ export const getAllEmployeePairs = async (employeeId) => {
             id: current.id,
             hora: current.hora,
             timestamp: current.timestamp,
-            // CAMBIO 9: Exponer las 3 columnas de observaciones
-            observacion_1: current.observacion1 || null,
-            observacion_1_editado: current.observacion1Editado || false,
-            observacion_2: current.observacion2 || null,
-            observacion_2_editado: current.observacion2Editado || false,
-            observacion_3: current.observacion3 || null,
-            observacion_3_editado: current.observacion3Editado || false,
+              observacion_1: current.observacion_1 || null,
+            observacion_1_editado: current.observacion_1Editado || false,
+            observacion_2: current.observacion_2 || null,
+            observacion_2_editado: current.observacion_2Editado || false,
+            observacion_3: current.observacion_3 || null,
+            observacion_3_editado: current.observacion_3Editado || false,
           },
           salida: nextSalida
             ? { id: nextSalida.id, hora: nextSalida.hora, timestamp: nextSalida.timestamp }
